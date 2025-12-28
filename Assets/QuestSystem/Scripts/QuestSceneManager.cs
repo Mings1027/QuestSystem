@@ -4,8 +4,6 @@ using UnityEngine.UI;
 
 public class QuestSceneManager : MonoBehaviour
 {
-    public static QuestSceneManager instance;
-
     [System.Serializable]
     public class QuestSequence
     {
@@ -27,19 +25,18 @@ public class QuestSceneManager : MonoBehaviour
 
     public void Init()
     {
-        instance = this;
         InitializeMap();
 
-        QuestEventManager.instance.questEvents.onStartQuest += StartGuide;
-        QuestEventManager.instance.questEvents.onFinishQuest += StopGuideByEvent;
+        QuestEventManager.Instance.questEvents.onStartQuest += StartGuide;
+        QuestEventManager.Instance.questEvents.onFinishQuest += StopGuideByEvent;
     }
 
     private void OnDestroy()
     {
-        if (QuestEventManager.instance != null && QuestEventManager.instance.questEvents != null)
+        if (QuestEventManager.Instance != null && QuestEventManager.Instance.questEvents != null)
         {
-            QuestEventManager.instance.questEvents.onStartQuest -= StartGuide;
-            QuestEventManager.instance.questEvents.onFinishQuest -= StopGuideByEvent;
+            QuestEventManager.Instance.questEvents.onStartQuest -= StartGuide;
+            QuestEventManager.Instance.questEvents.onFinishQuest -= StopGuideByEvent;
         }
     }
 

@@ -1,12 +1,13 @@
-using System.Collections;
-using System.Collections.Generic;
+using System;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
+[Serializable]
 public class Quest
 {
     // static info
     public QuestInfoSO info;
-
+    
     // state info
     public QuestState state;
     private int currentQuestStepIndex;
@@ -14,31 +15,33 @@ public class Quest
 
     public Quest(QuestInfoSO questInfo)
     {
-        this.info = questInfo;
-        this.state = QuestState.REQUIREMENTS_NOT_MET;
-        this.currentQuestStepIndex = 0;
-        this.questStepStates = new QuestStepState[info.questStepPrefabs.Length];
+        info = questInfo;
+        state = QuestState.REQUIREMENTS_NOT_MET;
+        currentQuestStepIndex = 0;
+
+        questStepStates = new QuestStepState[info.steps.Count];
         for (int i = 0; i < questStepStates.Length; i++)
         {
             questStepStates[i] = new QuestStepState();
         }
     }
 
-    public Quest(QuestInfoSO questInfo, QuestState questState, int currentQuestStepIndex, QuestStepState[] questStepStates)
+    public Quest(QuestInfoSO questInfo, QuestState questState, int currentQuestStepIndex,
+        QuestStepState[] questStepStates)
     {
-        this.info = questInfo;
-        this.state = questState;
+        info = questInfo;
+        state = questState;
         this.currentQuestStepIndex = currentQuestStepIndex;
         this.questStepStates = questStepStates;
 
         // if the quest step states and prefabs are different lengths,
         // something has changed during development and the saved data is out of sync.
-        if (this.questStepStates.Length != this.info.questStepPrefabs.Length)
+        if (this.questStepStates.Length != info.steps.Count)
         {
             Debug.LogWarning("Quest Step Prefabs and Quest Step States are "
-                + "of different lengths. This indicates something changed "
-                + "with the QuestInfo and the saved data is now out of sync. "
-                + "Reset your data - as this might cause issues. QuestId: " + this.info.id);
+                             + "of different lengths. This indicates something changed "
+                             + "with the QuestInfo and the saved data is now out of sync. "
+                             + "Reset your data - as this might cause issues. QuestId: " + info.id);
         }
     }
 
@@ -49,7 +52,7 @@ public class Quest
 
     public bool CurrentStepExists()
     {
-        return (currentQuestStepIndex < info.questStepPrefabs.Length);
+        return currentQuestStepIndex < info.steps.Count;
     }
 
     public void InstantiateCurrentQuestStep(Transform parentTransform)
@@ -57,9 +60,17 @@ public class Quest
         GameObject questStepPrefab = GetCurrentQuestStepPrefab();
         if (questStepPrefab != null)
         {
-            QuestStep questStep = Object.Instantiate<GameObject>(questStepPrefab, parentTransform)
+            QuestStep questStep = Object.Instantiate(questStepPrefab, parentTransform)
                 .GetComponent<QuestStep>();
-            questStep.InitializeQuestStep(info.id, currentQuestStepIndex, questStepStates[currentQuestStepIndex].state);
+            
+            QuestStepDataSO stepData = info.steps[currentQuestStepIndex];
+
+            questStep.InitializeQuestStep(
+                info.id,
+                currentQuestStepIndex,
+                questStepStates[currentQuestStepIndex].state,
+                stepData
+            );
         }
     }
 
@@ -68,13 +79,14 @@ public class Quest
         GameObject questStepPrefab = null;
         if (CurrentStepExists())
         {
-            questStepPrefab = info.questStepPrefabs[currentQuestStepIndex];
+            questStepPrefab = info.steps[currentQuestStepIndex].stepPrefab;
         }
-        else 
+        else
         {
             Debug.LogWarning("Tried to get quest step prefab, but stepIndex was out of range indicating that "
-                + "there's no current step: QuestId=" + info.id + ", stepIndex=" + currentQuestStepIndex);
+                             + "there's no current step: QuestId=" + info.id + ", stepIndex=" + currentQuestStepIndex);
         }
+
         return questStepPrefab;
     }
 
@@ -85,10 +97,10 @@ public class Quest
             questStepStates[stepIndex].state = questStepState.state;
             questStepStates[stepIndex].status = questStepState.status;
         }
-        else 
+        else
         {
             Debug.LogWarning("Tried to access quest step data, but stepIndex was out of range: "
-                + "Quest Id = " + info.id + ", Step Index = " + stepIndex);
+                             + "Quest Id = " + info.id + ", Step Index = " + stepIndex);
         }
     }
 
@@ -109,18 +121,20 @@ public class Quest
         {
             fullStatus = "This quest can be started!";
         }
-        else 
+        else
         {
             // display all previous quests with strikethroughs
             for (int i = 0; i < currentQuestStepIndex; i++)
             {
                 fullStatus += "<s>" + questStepStates[i].status + "</s>\n";
             }
+
             // display the current step, if it exists
             if (CurrentStepExists())
             {
                 fullStatus += questStepStates[currentQuestStepIndex].status;
             }
+
             // when the quest is completed or turned in
             if (state == QuestState.CAN_FINISH)
             {

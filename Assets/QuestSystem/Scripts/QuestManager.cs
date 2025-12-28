@@ -1,105 +1,148 @@
-using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
-public class QuestManager : MonoBehaviour
+public class QuestManager : Singleton<QuestManager>
 {
     [Header("Managers")]
-    [SerializeField] private QuestEventManager questEventManager; 
-    [SerializeField] private QuestSceneManager questSceneManager;
-    
-    [Header("Data Source")]
-    // [변경점 1] QuestDatabaseSO를 인스펙터에서 할당받도록 변수 추가
-    [SerializeField] private QuestDatabaseSO questDatabase; 
+    [SerializeField] private QuestEventManager questEventManager;
 
-    [Header("Config")]
-    [SerializeField] private bool loadQuestState = true;
+    [SerializeField] private QuestSceneManager questSceneManager;
+
+    [Header("Data Source")]
+    [SerializeField] private QuestDatabaseSO questDatabase;
+
+    [Header("Debug View")]
+    [SerializeField] private List<Quest> debugQuestList = new List<Quest>();
 
     private Dictionary<string, Quest> questMap;
 
-    private void Awake()
+    protected override void Awake()
     {
-        if (questEventManager != null)
-            questEventManager.Init();
-        else
-            Debug.LogError("QuestEventManager is missing in QuestManager!");
+        base.Awake();
 
-        if (questSceneManager != null)
-            questSceneManager.Init();
-        else
-            Debug.LogError("QuestSceneManager is missing in QuestManager!");
-        
+        if (questEventManager != null) questEventManager.Init();
+        if (questSceneManager != null) questSceneManager.Init();
+
+        // 맵 생성 및 상태 초기화
         questMap = CreateQuestMap();
     }
 
     private void OnEnable()
     {
-        QuestEventManager.instance.questEvents.onStartQuest += StartQuest;
-        QuestEventManager.instance.questEvents.onAdvanceQuest += AdvanceQuest;
-        QuestEventManager.instance.questEvents.onFinishQuest += FinishQuest;
-        QuestEventManager.instance.questEvents.onQuestStepStateChange += QuestStepStateChange;
+        QuestEventManager.Instance.questEvents.onStartQuest += StartQuest;
+        QuestEventManager.Instance.questEvents.onAdvanceQuest += AdvanceQuest;
+        QuestEventManager.Instance.questEvents.onFinishQuest += FinishQuest;
+        QuestEventManager.Instance.questEvents.onQuestStepStateChange += QuestStepStateChange;
     }
 
     private void OnDisable()
     {
-        if (QuestEventManager.instance != null)
+        if (QuestEventManager.Instance != null)
         {
-            QuestEventManager.instance.questEvents.onStartQuest -= StartQuest;
-            QuestEventManager.instance.questEvents.onAdvanceQuest -= AdvanceQuest;
-            QuestEventManager.instance.questEvents.onFinishQuest -= FinishQuest;
-            QuestEventManager.instance.questEvents.onQuestStepStateChange -= QuestStepStateChange;
+            QuestEventManager.Instance.questEvents.onStartQuest -= StartQuest;
+            QuestEventManager.Instance.questEvents.onAdvanceQuest -= AdvanceQuest;
+            QuestEventManager.Instance.questEvents.onFinishQuest -= FinishQuest;
+            QuestEventManager.Instance.questEvents.onQuestStepStateChange -= QuestStepStateChange;
         }
     }
 
     private void Start()
     {
+        // 게임 시작 시 진행 중인 퀘스트가 있다면 스텝 생성
         foreach (Quest quest in questMap.Values)
         {
             if (quest.state == QuestState.IN_PROGRESS)
             {
                 quest.InstantiateCurrentQuestStep(this.transform);
             }
-            QuestEventManager.instance.questEvents.QuestStateChange(quest);
+
+            // 초기 상태 이벤트 전송 (UI 갱신용)
+            QuestEventManager.Instance.questEvents.QuestStateChange(quest);
         }
     }
+
+    // -----------------------------------------------------------------------
+    // 가이드 버튼용: 상태에 따라 시작 또는 완료 처리
+    // -----------------------------------------------------------------------
+    public void TryStartNextQuest()
+    {
+        // 1. 다음에 진행해야 할 퀘스트의 인덱스 계산
+        int nextIndex = DBPlayerGameData.Instance.completedQuestNumber + 1;
+
+        // 2. DB 범위 확인
+        if (nextIndex >= questDatabase.quests.Count)
+        {
+            Debug.Log("[QuestManager] 모든 퀘스트를 완료했습니다!");
+            return;
+        }
+
+        // 3. 대상 퀘스트 가져오기
+        QuestInfoSO nextQuestInfo = questDatabase.quests[nextIndex];
+        if (nextQuestInfo == null) return;
+
+        Quest nextQuest = GetQuestById(nextQuestInfo.id);
+
+        // ---------------------------------------------------------
+        // [핵심 수정] 상태별 분기 처리 강화
+        // ---------------------------------------------------------
+
+        // Case A: 이미 모든 스텝을 완수하고 '보상 대기(CAN_FINISH)' 상태인 경우
+        if (nextQuest.state == QuestState.CAN_FINISH)
+        {
+            QuestEventManager.Instance.questEvents.FinishQuest(nextQuest.info.id);
+            Debug.Log($"[QuestManager] 퀘스트 완료 및 보상 수령: {nextQuestInfo.displayName}");
+            return;
+        }
+
+        // Case B: 이미 진행 중인 경우 (IN_PROGRESS)
+        if (nextQuest.state == QuestState.IN_PROGRESS)
+        {
+            Debug.Log($"[QuestManager] '{nextQuestInfo.displayName}' 퀘스트는 이미 진행 중입니다.");
+            return;
+        }
+
+        // Case C: 이미 완료된 경우 (FINISHED)
+        if (nextQuest.state == QuestState.FINISHED)
+        {
+            // (이론상 completedQuestNumber + 1 로 가져오므로 여기 걸릴 일은 드뭅니다)
+            return;
+        }
+
+        // Case D: 시작 가능한 경우 (REQUIREMENTS_NOT_MET 이지만 조건 체크 후 시작)
+        if (CheckRequirementsMet(nextQuest))
+        {
+            QuestEventManager.Instance.questEvents.StartQuest(nextQuest.info.id);
+            Debug.Log($"[QuestManager] 가이드 퀘스트 시작: {nextQuestInfo.displayName}");
+        }
+        else
+        {
+            Debug.Log($"[QuestManager] '{nextQuestInfo.displayName}' 시작 불가: 조건이 부족합니다.");
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // 상태 변경 및 진행 로직
+    // -----------------------------------------------------------------------
 
     private void ChangeQuestState(string id, QuestState state)
     {
         Quest quest = GetQuestById(id);
         quest.state = state;
-        QuestEventManager.instance.questEvents.QuestStateChange(quest);
+        QuestEventManager.Instance.questEvents.QuestStateChange(quest);
     }
 
     private bool CheckRequirementsMet(Quest quest)
     {
-        // 1. 등록된 요구조건 리스트 가져오기
         var requirements = quest.info.requirements;
-
-        // 요구조건이 하나도 없으면 바로 통과
         if (requirements == null || requirements.Count == 0) return true;
 
-        // 2. 하나라도 만족하지 못하면 false 리턴
         foreach (var req in requirements)
         {
-            if (!req.IsMet())
-            {
-                return false; 
-            }
+            if (!req.IsMet()) return false;
         }
 
-        // 3. 모두 통과하면 true
         return true;
-    }
-
-    private void Update()
-    {
-        foreach (Quest quest in questMap.Values)
-        {
-            if (quest.state == QuestState.REQUIREMENTS_NOT_MET && CheckRequirementsMet(quest))
-            {
-                ChangeQuestState(quest.info.id, QuestState.CAN_START);
-            }
-        }
     }
 
     private void StartQuest(string id)
@@ -127,28 +170,22 @@ public class QuestManager : MonoBehaviour
     private void FinishQuest(string id)
     {
         Quest quest = GetQuestById(id);
-        
-        // 1. 여기서 보상 지급 로직 호출
         ClaimRewards(quest);
-        
         ChangeQuestState(quest.info.id, QuestState.FINISHED);
+
+        // [중요] 완료된 퀘스트 번호 갱신
+        int currentQuestIndex = questDatabase.quests.IndexOf(quest.info);
+        if (currentQuestIndex > DBPlayerGameData.Instance.completedQuestNumber)
+        {
+            DBPlayerGameData.Instance.completedQuestNumber = currentQuestIndex;
+            Debug.Log($"[Progress] 퀘스트 진행도 갱신: {currentQuestIndex}번 완료");
+        }
     }
 
     private void ClaimRewards(Quest quest)
     {
-        // QuestInfoSO에 있는 rewards 리스트 가져오기
-        List<QuestReward> rewards = quest.info.rewards;
-
-        if (rewards == null || rewards.Count == 0) return;
-
-        Debug.Log($"[Quest Manager] Claiming rewards for quest: {quest.info.id}");
-
-        // 2. 리스트를 순회하며 각 보상의 GiveReward() 실행
-        foreach (QuestReward reward in rewards)
-        {
-            // 각 보상 클래스(GoldReward, ItemReward 등)에 구현된 내용이 실행됨
-            reward.GiveReward(); 
-        }
+        if (quest.info.rewards == null) return;
+        foreach (var reward in quest.info.rewards) reward.GiveReward();
     }
 
     private void QuestStepStateChange(string id, int stepIndex, QuestStepState questStepState)
@@ -158,91 +195,61 @@ public class QuestManager : MonoBehaviour
         ChangeQuestState(id, quest.state);
     }
 
+    // -----------------------------------------------------------------------
+    // 초기화 로직 (JSON/PlayerPrefs 제거 -> DB 순서 기반)
+    // -----------------------------------------------------------------------
     private Dictionary<string, Quest> CreateQuestMap()
     {
-        // [변경점 2] Resources.LoadAll 삭제 및 DatabaseSO 사용
-        
         Dictionary<string, Quest> idToQuestMap = new Dictionary<string, Quest>();
 
-        // 데이터베이스가 연결되어 있는지 확인
         if (questDatabase == null)
         {
-            Debug.LogError("QuestDatabaseSO is not assigned in QuestManager Inspector!");
-            return idToQuestMap; // 빈 딕셔너리 반환
+            Debug.LogError("QuestDatabaseSO가 할당되지 않았습니다!");
+            return idToQuestMap;
         }
 
-        // DB에 있는 리스트를 순회
-        foreach (QuestInfoSO questInfo in questDatabase.quests)
+        // DB를 순회하며 퀘스트 생성 및 상태 설정
+        for (int i = 0; i < questDatabase.quests.Count; i++)
         {
-            // 리스트 내에 비어있는 항목이 있을 수 있으므로 체크
+            QuestInfoSO questInfo = questDatabase.quests[i];
             if (questInfo == null) continue;
 
             if (idToQuestMap.ContainsKey(questInfo.id))
             {
-                Debug.LogWarning("Duplicate ID found when creating quest map: " + questInfo.id);
+                Debug.LogWarning("중복된 ID 발견: " + questInfo.id);
+                continue;
+            }
+
+            // [핵심] 현재 인덱스(i)와 완료된 번호(completedQuestNumber) 비교
+            Quest quest = new Quest(questInfo);
+
+            if (i <= DBPlayerGameData.Instance.completedQuestNumber)
+            {
+                // 이미 완료한 순서라면 -> FINISHED 상태로 설정
+                quest.state = QuestState.FINISHED;
             }
             else
             {
-                idToQuestMap.Add(questInfo.id, LoadQuest(questInfo));
+                // 아직 오지 않은 순서라면 -> 기본 상태 (REQUIREMENTS_NOT_MET)
+                quest.state = QuestState.REQUIREMENTS_NOT_MET;
             }
+
+            idToQuestMap.Add(questInfo.id, quest);
         }
+
+        // [추가됨] 딕셔너리 생성이 끝나면, 인스펙터용 리스트에도 담아줍니다.
+        // 같은 객체를 참조하므로, 게임 중 상태가 변하면 인스펙터에서도 변합니다.
+        debugQuestList = idToQuestMap.Values.ToList();
 
         return idToQuestMap;
     }
 
     private Quest GetQuestById(string id)
     {
-        Quest quest = questMap[id];
-        if (quest == null)
-        {
-            Debug.LogError("ID not found in the Quest Map: " + id);
-        }
-        return quest;
-    }
+        if (questMap.TryGetValue(id, out Quest quest))
+            return quest;
 
-    private void OnApplicationQuit()
-    {
-        foreach (Quest quest in questMap.Values)
-        {
-            SaveQuest(quest);
-        }
-    }
-
-    private void SaveQuest(Quest quest)
-    {
-        try
-        {
-            QuestData questData = quest.GetQuestData();
-            string serializedData = JsonUtility.ToJson(questData);
-            PlayerPrefs.SetString(quest.info.id, serializedData);
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError("Failed to save quest with id " + quest.info.id + ": " + e);
-        }
-    }
-
-    private Quest LoadQuest(QuestInfoSO questInfo)
-    {
-        Quest quest = null;
-        try
-        {
-            if (PlayerPrefs.HasKey(questInfo.id) && loadQuestState)
-            {
-                string serializedData = PlayerPrefs.GetString(questInfo.id);
-                QuestData questData = JsonUtility.FromJson<QuestData>(serializedData);
-                quest = new Quest(questInfo, questData.state, questData.questStepIndex, questData.questStepStates);
-            }
-            else
-            {
-                quest = new Quest(questInfo);
-            }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError("Failed to load quest with id " + quest.info.id + ": " + e);
-        }
-
-        return quest;
+        Debug.LogError("ID를 찾을 수 없음: " + id);
+        return null;
     }
 }
