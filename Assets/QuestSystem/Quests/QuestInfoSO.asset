@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 63a9348c99934d91abde329646a90e3f, type: 3}
+  m_Name: QuestInfoSO
+  m_EditorClassIdentifier: Assembly-CSharp::QuestInfoSO
+  <id>k__BackingField: QuestInfoSO
+  displayName: "\uACF5\uACA9\uB825 10\uCC0D\uAE30"
+  requirements:
+  - rid: 2093776439086678218
+  - rid: 2093776439086678219
+  questStepPrefabs: []
+  rewards:
+  - rid: 2093776439086678220
+  references:
+    version: 2
+    RefIds:
+    - rid: 2093776439086678218
+      type: {class: CurrencyRequirement, ns: , asm: Assembly-CSharp}
+      data:
+        requiredGold: 10
+    - rid: 2093776439086678219
+      type: {class: LevelRequirement, ns: , asm: Assembly-CSharp}
+      data:
+        targetLevel: 30
+    - rid: 2093776439086678220
+      type: {class: GoldReward, ns: , asm: Assembly-CSharp}
+      data:
+        amount: 0

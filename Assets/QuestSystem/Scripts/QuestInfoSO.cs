@@ -1,31 +1,31 @@
 using System.Collections.Generic;
-using QuestSystem;
 using UnityEngine;
 
-[CreateAssetMenu(fileName = "NewQuest", menuName = "Quest System/Quest Info")]
+[CreateAssetMenu(fileName = "QuestInfoSO", menuName = "ScriptableObjects/QuestInfoSO", order = 1)]
 public class QuestInfoSO : ScriptableObject
 {
     [field: SerializeField] public string id { get; private set; }
+
+    [Header("General")]
+    public string displayName;
+
+    [Header("Requirements")]
+    [SerializeReference]
+    public List<QuestRequirement> requirements = new();
     
-    [Header("Display")]
-    public string title;
-    [TextArea] public string description;
-
-    [Header("Automation")]
-    public bool autoStart = true;
-    public bool autoComplete = true;
-
-    [Header("Steps Logic")]
-    [SerializeReference] public List<QuestStep> steps = new();
+    [Header("Steps")]
+    public GameObject[] questStepPrefabs;
 
     [Header("Rewards")]
-    // [변경] 단순 int 대신 보상 클래스 리스트 사용
-    [SerializeReference] public List<QuestReward> rewards = new(); 
+    [SerializeReference] 
+    public List<QuestReward> rewards = new();
 
+    // ensure the id is always the name of the Scriptable Object asset
     private void OnValidate()
     {
 #if UNITY_EDITOR
-        if (string.IsNullOrEmpty(id)) id = this.name;
+        id = this.name;
+        UnityEditor.EditorUtility.SetDirty(this);
 #endif
     }
 }

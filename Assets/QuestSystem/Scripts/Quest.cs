@@ -1,82 +1,137 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-// 런타임에 돌아가는 퀘스트 인스턴스
 public class Quest
 {
-    public QuestInfoSO Info { get; private set; }
-    public QuestState State { get; set; }
-    public int CurrentStepIndex { get; private set; }
+    // static info
+    public QuestInfoSO info;
 
-    // 현재 실행 중인 스텝 객체 (SO에 있는 원본이 아니라 복제본을 사용하는 게 안전하지만, 
-    // 여기서는 메모리 절약을 위해 SO의 설정을 참조하되 상태는 별도 관리하거나
-    // SO 데이터를 기반으로 런타임에 초기화합니다. 
-    // *주의*: SerializeReference된 객체는 런타임에 수정하면 SO가 바뀔 수 있으므로 
-    // JSON 직렬화/역직렬화 기법으로 깊은 복사를 하거나, 
-    // 간단하게는 스텝 내부 변수를 초기화하며 사용해야 합니다.)
-    
-    // 이 예제에서는 간단함을 위해 SO의 참조를 가져오되, QuestStep.Initialize에서 상태를 덮어씌웁니다.
-    private QuestStep currentStepInstance; 
+    // state info
+    public QuestState state;
+    private int currentQuestStepIndex;
+    private QuestStepState[] questStepStates;
 
-    public Quest(QuestInfoSO info)
+    public Quest(QuestInfoSO questInfo)
     {
-        Info = info;
-        State = QuestState.REQUIREMENTS_NOT_MET;
-        CurrentStepIndex = 0;
-    }
-
-    // 데이터 로드용 생성자
-    public Quest(QuestInfoSO info, QuestState state, int stepIndex)
-    {
-        Info = info;
-        State = state;
-        CurrentStepIndex = stepIndex;
-    }
-
-    public void StartCurrentStep()
-    {
-        if (CurrentStepIndex < Info.steps.Count)
+        this.info = questInfo;
+        this.state = QuestState.REQUIREMENTS_NOT_MET;
+        this.currentQuestStepIndex = 0;
+        this.questStepStates = new QuestStepState[info.questStepPrefabs.Length];
+        for (int i = 0; i < questStepStates.Length; i++)
         {
-            // 리스트에 있는 객체를 그대로 쓰면 상태 공유 문제가 생길 수 있으므로
-            // 실제 상용 게임에선 Deep Copy를 권장합니다. 
-            // 여기선 편의상 바로 사용합니다.
-            currentStepInstance = Info.steps[CurrentStepIndex];
-            
-            // 저장된 상태가 있다면 로드 (여기선 빈 문자열 가정)
-            currentStepInstance.Initialize(Info.id, ""); 
-            currentStepInstance.OnStart();
+            questStepStates[i] = new QuestStepState();
         }
     }
 
-    public void UpdateCurrentStep()
+    public Quest(QuestInfoSO questInfo, QuestState questState, int currentQuestStepIndex, QuestStepState[] questStepStates)
     {
-        if (State == QuestState.IN_PROGRESS && currentStepInstance != null)
+        this.info = questInfo;
+        this.state = questState;
+        this.currentQuestStepIndex = currentQuestStepIndex;
+        this.questStepStates = questStepStates;
+
+        // if the quest step states and prefabs are different lengths,
+        // something has changed during development and the saved data is out of sync.
+        if (this.questStepStates.Length != this.info.questStepPrefabs.Length)
         {
-            currentStepInstance.OnUpdate();
+            Debug.LogWarning("Quest Step Prefabs and Quest Step States are "
+                + "of different lengths. This indicates something changed "
+                + "with the QuestInfo and the saved data is now out of sync. "
+                + "Reset your data - as this might cause issues. QuestId: " + this.info.id);
         }
     }
 
-    public void AdvanceStep()
+    public void MoveToNextStep()
     {
-        // 현재 스텝 정리
-        if (currentStepInstance != null)
-        {
-            currentStepInstance.OnEnd();
-            currentStepInstance = null;
-        }
+        currentQuestStepIndex++;
+    }
 
-        CurrentStepIndex++;
+    public bool CurrentStepExists()
+    {
+        return (currentQuestStepIndex < info.questStepPrefabs.Length);
+    }
 
-        // 다음 스텝이 있으면 시작, 없으면 완료 대기
-        if (CurrentStepIndex < Info.steps.Count)
+    public void InstantiateCurrentQuestStep(Transform parentTransform)
+    {
+        GameObject questStepPrefab = GetCurrentQuestStepPrefab();
+        if (questStepPrefab != null)
         {
-            StartCurrentStep();
-        }
-        else
-        {
-            State = QuestState.CAN_FINISH;
+            QuestStep questStep = Object.Instantiate<GameObject>(questStepPrefab, parentTransform)
+                .GetComponent<QuestStep>();
+            questStep.InitializeQuestStep(info.id, currentQuestStepIndex, questStepStates[currentQuestStepIndex].state);
         }
     }
 
-    public QuestStep GetCurrentStep() => currentStepInstance;
+    private GameObject GetCurrentQuestStepPrefab()
+    {
+        GameObject questStepPrefab = null;
+        if (CurrentStepExists())
+        {
+            questStepPrefab = info.questStepPrefabs[currentQuestStepIndex];
+        }
+        else 
+        {
+            Debug.LogWarning("Tried to get quest step prefab, but stepIndex was out of range indicating that "
+                + "there's no current step: QuestId=" + info.id + ", stepIndex=" + currentQuestStepIndex);
+        }
+        return questStepPrefab;
+    }
+
+    public void StoreQuestStepState(QuestStepState questStepState, int stepIndex)
+    {
+        if (stepIndex < questStepStates.Length)
+        {
+            questStepStates[stepIndex].state = questStepState.state;
+            questStepStates[stepIndex].status = questStepState.status;
+        }
+        else 
+        {
+            Debug.LogWarning("Tried to access quest step data, but stepIndex was out of range: "
+                + "Quest Id = " + info.id + ", Step Index = " + stepIndex);
+        }
+    }
+
+    public QuestData GetQuestData()
+    {
+        return new QuestData(state, currentQuestStepIndex, questStepStates);
+    }
+
+    public string GetFullStatusText()
+    {
+        string fullStatus = "";
+
+        if (state == QuestState.REQUIREMENTS_NOT_MET)
+        {
+            fullStatus = "Requirements are not yet met to start this quest.";
+        }
+        else if (state == QuestState.CAN_START)
+        {
+            fullStatus = "This quest can be started!";
+        }
+        else 
+        {
+            // display all previous quests with strikethroughs
+            for (int i = 0; i < currentQuestStepIndex; i++)
+            {
+                fullStatus += "<s>" + questStepStates[i].status + "</s>\n";
+            }
+            // display the current step, if it exists
+            if (CurrentStepExists())
+            {
+                fullStatus += questStepStates[currentQuestStepIndex].status;
+            }
+            // when the quest is completed or turned in
+            if (state == QuestState.CAN_FINISH)
+            {
+                fullStatus += "The quest is ready to be turned in.";
+            }
+            else if (state == QuestState.FINISHED)
+            {
+                fullStatus += "The quest has been completed!";
+            }
+        }
+
+        return fullStatus;
+    }
 }
