@@ -12,12 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 63a9348c99934d91abde329646a90e3f, type: 3}
   m_Name: QuestInfoSO 2
   m_EditorClassIdentifier: Assembly-CSharp::QuestInfoSO
-  <id>k__BackingField: QuestInfoSO 2
-  displayName: 
-  autoStart: 0
-  autoComplete: 0
+  id: QuestInfoSO 2
+  displayName: "\uC2AC\uB77C\uC78410\uB9C8\uB9AC"
+  autoStart: 1
+  autoComplete: 1
   requirements: []
-  steps: []
+  steps:
+  - {fileID: 11400000, guid: 391b4164bc8ab49b0ba92df98b5a4c86, type: 2}
   rewards: []
   references:
     version: 2

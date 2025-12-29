@@ -57,7 +57,7 @@ public class QuestSceneManager : Singleton<QuestSceneManager>
         {
             if (seq.quest != null)
             {
-                sequenceMap.Add(seq.quest.id, seq.stepSequences);
+                sequenceMap.Add(seq.quest.ID, seq.stepSequences);
             }
         }
     }

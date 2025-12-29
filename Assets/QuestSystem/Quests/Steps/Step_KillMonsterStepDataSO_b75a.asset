@@ -12,6 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 92db6caa4b934645adfe8fa1a977af10, type: 3}
   m_Name: Step_KillMonsterStepDataSO_b75a
   m_EditorClassIdentifier: Assembly-CSharp::KillMonsterStepDataSO
-  stepPrefab: {fileID: 7391747758275932228, guid: 9e351335141e14deda35bc8d0b47aabc, type: 3}
   monsterID: Slime
-  killCount: 10
+  stepInfos:
+  - questId: QuestInfoSO 2
+    displayIndex: 1
+    killCount: 10
+  - questId: QuestInfoSO
+    displayIndex: 2
+    killCount: 30

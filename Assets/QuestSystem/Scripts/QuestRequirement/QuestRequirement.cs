@@ -50,7 +50,7 @@ public class QuestFinishedRequirement : QuestRequirement
         // (QuestManager.Instance가 있는지 확인)
         if (QuestManager.Instance == null) return false;
 
-        Quest quest = QuestManager.Instance.GetQuestById(questInfoSo.id);
+        Quest quest = QuestManager.Instance.GetQuestById(questInfoSo.ID);
 
         // 3. 퀘스트가 존재하고, 상태가 FINISHED여야만 true 반환
         return quest != null && quest.state == QuestState.FINISHED;

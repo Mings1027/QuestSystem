@@ -12,26 +12,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 63a9348c99934d91abde329646a90e3f, type: 3}
   m_Name: QuestInfoSO
   m_EditorClassIdentifier: Assembly-CSharp::QuestInfoSO
-  <id>k__BackingField: QuestInfoSO
-  displayName: "\uC2AC\uB77C\uC784 10\uB9C8\uB9AC \uC7A1\uACE0 \uACF5\uACA9\uB825
-    10 \uC62C\uB9AC\uAE30"
-  autoStart: 0
+  id: QuestInfoSO
+  displayName: "\uC2AC\uB77C\uC784 1\uB9C8\uB9AC \uC7A1\uACE0 \uACF5\uACA9\uB825
+    20 \uC62C\uB9AC\uAE30"
+  autoStart: 1
   autoComplete: 1
-  requirements:
-  - rid: 2093776444039626807
+  requirements: []
   steps:
   - {fileID: 11400000, guid: 391b4164bc8ab49b0ba92df98b5a4c86, type: 2}
-  - {fileID: 11400000, guid: 634e15872b64243c9bf8cf62d9f6c3fc, type: 2}
+  - {fileID: 11400000, guid: 73269fea6c9e4485389ac44aa4117f2a, type: 2}
   rewards:
   - rid: 2093776444039626808
   references:
     version: 2
     RefIds:
-    - rid: 2093776444039626807
-      type: {class: CastleLevelRequirement, ns: , asm: Assembly-CSharp}
-      data:
-        label: CastleLevelRequirement
-        targetCastleLevel: 10
     - rid: 2093776444039626808
       type: {class: LogReward, ns: , asm: Assembly-CSharp}
       data:

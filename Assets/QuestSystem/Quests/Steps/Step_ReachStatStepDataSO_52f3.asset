@@ -13,4 +13,10 @@ MonoBehaviour:
   m_Name: Step_ReachStatStepDataSO_52f3
   m_EditorClassIdentifier: Assembly-CSharp::ReachStatStepDataSO
   targetStat: 0
-  targetValue: 20
+  stepInfos:
+  - questId: QuestInfoSO 3
+    displayIndex: 0
+    targetValue: 10
+  - questId: QuestInfoSO
+    displayIndex: 2
+    targetValue: 10

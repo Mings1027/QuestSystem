@@ -85,7 +85,7 @@ public class QuestManager : Singleton<QuestManager>
         QuestInfoSO nextQuestInfo = questDatabase.quests[nextIndex];
         if (nextQuestInfo == null) return;
 
-        Quest nextQuest = GetQuestById(nextQuestInfo.id);
+        Quest nextQuest = GetQuestById(nextQuestInfo.ID);
 
         // ---------------------------------------------------------
         // [핵심 수정] 상태별 분기 처리 강화
@@ -94,7 +94,7 @@ public class QuestManager : Singleton<QuestManager>
         // Case A: 이미 모든 스텝을 완수하고 '보상 대기(CAN_FINISH)' 상태인 경우
         if (nextQuest.state == QuestState.CAN_FINISH)
         {
-            QuestEventManager.Instance.questEvents.FinishQuest(nextQuest.info.id);
+            QuestEventManager.Instance.questEvents.FinishQuest(nextQuest.info.ID);
             Debug.Log($"[QuestManager] 퀘스트 완료 및 보상 수령: {nextQuestInfo.displayName}");
             return;
         }
@@ -116,7 +116,7 @@ public class QuestManager : Singleton<QuestManager>
         // Case D: 시작 가능한 경우 (REQUIREMENTS_NOT_MET 이지만 조건 체크 후 시작)
         if (CheckRequirementsMet(nextQuest))
         {
-            QuestEventManager.Instance.questEvents.StartQuest(nextQuest.info.id);
+            QuestEventManager.Instance.questEvents.StartQuest(nextQuest.info.ID);
             Debug.Log($"[QuestManager] 가이드 퀘스트 시작: {nextQuestInfo.displayName}");
         }
         else
@@ -153,7 +153,7 @@ public class QuestManager : Singleton<QuestManager>
     {
         Quest quest = GetQuestById(id);
         quest.InstantiateCurrentQuestStep(transform);
-        ChangeQuestState(quest.info.id, QuestState.IN_PROGRESS);
+        ChangeQuestState(quest.info.ID, QuestState.IN_PROGRESS);
     }
 
     private void AdvanceQuest(string id)
@@ -175,11 +175,11 @@ public class QuestManager : Singleton<QuestManager>
         {
             if (quest.info.autoComplete)
             {
-                FinishQuest(quest.info.id);
+                FinishQuest(quest.info.ID);
             }
             else
             {
-                ChangeQuestState(quest.info.id, QuestState.CAN_FINISH);
+                ChangeQuestState(quest.info.ID, QuestState.CAN_FINISH);
             }
         }
     }
@@ -188,7 +188,7 @@ public class QuestManager : Singleton<QuestManager>
     {
         Quest quest = GetQuestById(id);
         ClaimRewards(quest);
-        ChangeQuestState(quest.info.id, QuestState.FINISHED);
+        ChangeQuestState(quest.info.ID, QuestState.FINISHED);
 
         // [중요] 완료된 퀘스트 번호 갱신
         int currentQuestIndex = questDatabase.quests.IndexOf(quest.info);
@@ -237,7 +237,7 @@ public class QuestManager : Singleton<QuestManager>
                     // 3. 조건이 충족되었다면
                     if (CheckRequirementsMet(quest))
                     {
-                        QuestEventManager.Instance.questEvents.StartQuest(quest.info.id);
+                        QuestEventManager.Instance.questEvents.StartQuest(quest.info.ID);
                         Debug.Log($"[AutoStart] 순서 {myIndex}번 '{quest.info.displayName}' 자동 시작됨.");
                     }
                 }
@@ -246,7 +246,7 @@ public class QuestManager : Singleton<QuestManager>
                     // AutoStart가 꺼져있어도 조건이 맞으면 CAN_START로 변경 (가이드 버튼용)
                     if (CheckRequirementsMet(quest) && quest.state != QuestState.CAN_START)
                     {
-                        ChangeQuestState(quest.info.id, QuestState.CAN_START);
+                        ChangeQuestState(quest.info.ID, QuestState.CAN_START);
                     }
                 }
             }
@@ -272,9 +272,9 @@ public class QuestManager : Singleton<QuestManager>
             QuestInfoSO questInfo = questDatabase.quests[i];
             if (questInfo == null) continue;
 
-            if (idToQuestMap.ContainsKey(questInfo.id))
+            if (idToQuestMap.ContainsKey(questInfo.ID))
             {
-                Debug.LogWarning("중복된 ID 발견: " + questInfo.id);
+                Debug.LogWarning("중복된 ID 발견: " + questInfo.ID);
                 continue;
             }
 
@@ -292,7 +292,7 @@ public class QuestManager : Singleton<QuestManager>
                 quest.state = QuestState.REQUIREMENTS_NOT_MET;
             }
 
-            idToQuestMap.Add(questInfo.id, quest);
+            idToQuestMap.Add(questInfo.ID, quest);
         }
 
         // [추가됨] 딕셔너리 생성이 끝나면, 인스펙터용 리스트에도 담아줍니다.
@@ -320,7 +320,7 @@ public class QuestManager : Singleton<QuestManager>
         }
 
         // 2. 해당 순서의 퀘스트 ID를 가져옴
-        string id = questDatabase.quests[index].id;
+        string id = questDatabase.quests[index].ID;
 
         // 3. ID로 실제 진행 중인 퀘스트 객체(Runtime Quest)를 찾아서 반환
         return GetQuestById(id);
