@@ -14,6 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::QuestInfoSO
   <id>k__BackingField: QuestInfoSO 2
   displayName: 
+  autoStart: 0
+  autoComplete: 0
   requirements: []
   steps: []
   rewards: []

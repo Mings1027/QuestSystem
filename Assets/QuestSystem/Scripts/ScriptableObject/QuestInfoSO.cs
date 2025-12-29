@@ -9,6 +9,12 @@ public class QuestInfoSO : ScriptableObject
     [Header("General")]
     public string displayName;
 
+    [Tooltip("체크 시 조건(Requirements)이 충족되는 즉시 퀘스트가 시작됩니다.")]
+    public bool autoStart;
+    
+    [Tooltip("체크 시 모든 스텝을 완수하면 즉시 보상을 받고 퀘스트가 완료됩니다.")]
+    public bool autoComplete;
+    
     [Header("Requirements")]
     [SerializeReference]
     public List<QuestRequirement> requirements = new();

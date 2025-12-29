@@ -34,6 +34,7 @@ public class QuestManager : Singleton<QuestManager>
         QuestEventManager.Instance.questEvents.onAdvanceQuest += AdvanceQuest;
         QuestEventManager.Instance.questEvents.onFinishQuest += FinishQuest;
         QuestEventManager.Instance.questEvents.onQuestStepStateChange += QuestStepStateChange;
+        QuestEventManager.Instance.onQuestConditionChanged += QuestConditionChangedQuests;
     }
 
     private void OnDisable()
@@ -44,12 +45,13 @@ public class QuestManager : Singleton<QuestManager>
             QuestEventManager.Instance.questEvents.onAdvanceQuest -= AdvanceQuest;
             QuestEventManager.Instance.questEvents.onFinishQuest -= FinishQuest;
             QuestEventManager.Instance.questEvents.onQuestStepStateChange -= QuestStepStateChange;
+            QuestEventManager.Instance.onQuestConditionChanged -= QuestConditionChangedQuests;
         }
     }
 
     private void Start()
     {
-        // 게임 시작 시 진행 중인 퀘스트가 있다면 스텝 생성
+        // 1. 기존 진행 중인 퀘스트 복구
         foreach (Quest quest in questMap.Values)
         {
             if (quest.state == QuestState.IN_PROGRESS)
@@ -57,9 +59,11 @@ public class QuestManager : Singleton<QuestManager>
                 quest.InstantiateCurrentQuestStep(this.transform);
             }
 
-            // 초기 상태 이벤트 전송 (UI 갱신용)
             QuestEventManager.Instance.questEvents.QuestStateChange(quest);
         }
+
+        // [추가됨] 게임 시작 시 자동 시작 가능한 퀘스트 체크
+        QuestConditionChangedQuests();
     }
 
     // -----------------------------------------------------------------------
@@ -148,22 +152,35 @@ public class QuestManager : Singleton<QuestManager>
     private void StartQuest(string id)
     {
         Quest quest = GetQuestById(id);
-        quest.InstantiateCurrentQuestStep(this.transform);
+        quest.InstantiateCurrentQuestStep(transform);
         ChangeQuestState(quest.info.id, QuestState.IN_PROGRESS);
     }
 
     private void AdvanceQuest(string id)
     {
         Quest quest = GetQuestById(id);
+
         quest.MoveToNextStep();
 
         if (quest.CurrentStepExists())
         {
-            quest.InstantiateCurrentQuestStep(this.transform);
+            quest.InstantiateCurrentQuestStep(transform);
+
+            if (questSceneManager != null)
+            {
+                questSceneManager.StartGuide(id);
+            }
         }
         else
         {
-            ChangeQuestState(quest.info.id, QuestState.CAN_FINISH);
+            if (quest.info.autoComplete)
+            {
+                FinishQuest(quest.info.id);
+            }
+            else
+            {
+                ChangeQuestState(quest.info.id, QuestState.CAN_FINISH);
+            }
         }
     }
 
@@ -193,6 +210,47 @@ public class QuestManager : Singleton<QuestManager>
         Quest quest = GetQuestById(id);
         quest.StoreQuestStepState(questStepState, stepIndex);
         ChangeQuestState(id, quest.state);
+    }
+
+    private void QuestConditionChangedQuests()
+    {
+        foreach (Quest quest in questMap.Values)
+        {
+            // 1. 아직 시작 안 된 퀘스트 중에서
+            if (quest.state == QuestState.REQUIREMENTS_NOT_MET || quest.state == QuestState.CAN_START)
+            {
+                // 1. 이 퀘스트가 DB 리스트의 몇 번째인지 확인
+                int myIndex = questDatabase.quests.IndexOf(quest.info);
+                
+                // 2. 지금 플레이어가 깨야 할 순서인지 확인 (완료된 번호 + 1)
+                int nextSequenceIndex = DBPlayerGameData.Instance.completedQuestNumber + 1;
+
+                // 3. 만약 내 차례가 아니라면? (아직 앞의 퀘스트를 안 깼거나, 이미 지나갔거나)
+                if (myIndex != nextSequenceIndex) 
+                {
+                    continue; // 무시하고 다음 검사로 넘어감
+                }
+               
+                // 2. AutoStart 옵션이 켜져 있고
+                if (quest.info.autoStart)
+                {
+                    // 3. 조건이 충족되었다면
+                    if (CheckRequirementsMet(quest))
+                    {
+                        QuestEventManager.Instance.questEvents.StartQuest(quest.info.id);
+                        Debug.Log($"[AutoStart] 순서 {myIndex}번 '{quest.info.displayName}' 자동 시작됨.");
+                    }
+                }
+                else
+                {
+                    // AutoStart가 꺼져있어도 조건이 맞으면 CAN_START로 변경 (가이드 버튼용)
+                    if (CheckRequirementsMet(quest) && quest.state != QuestState.CAN_START)
+                    {
+                        ChangeQuestState(quest.info.id, QuestState.CAN_START);
+                    }
+                }
+            }
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -244,12 +302,27 @@ public class QuestManager : Singleton<QuestManager>
         return idToQuestMap;
     }
 
-    private Quest GetQuestById(string id)
+    public Quest GetQuestById(string id)
     {
         if (questMap.TryGetValue(id, out Quest quest))
             return quest;
 
         Debug.LogError("ID를 찾을 수 없음: " + id);
         return null;
+    }
+    
+    public Quest GetQuestBySequenceIndex(int index)
+    {
+        // 1. DB가 없거나 인덱스가 범위를 벗어나면 null 반환
+        if (questDatabase == null || index < 0 || index >= questDatabase.quests.Count)
+        {
+            return null;
+        }
+
+        // 2. 해당 순서의 퀘스트 ID를 가져옴
+        string id = questDatabase.quests[index].id;
+
+        // 3. ID로 실제 진행 중인 퀘스트 객체(Runtime Quest)를 찾아서 반환
+        return GetQuestById(id);
     }
 }

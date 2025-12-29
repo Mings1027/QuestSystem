@@ -15,6 +15,7 @@ public class GameTester : MonoBehaviour
     public void SetCastleLevel()
     {
         DBPlayerGameData.Instance.castleLevel = levelToSet;
+        QuestEventManager.Instance.NotifyQuestConditionChanged();
         Debug.Log($"[Test] 성 레벨을 {levelToSet}로 설정함. (조건 충족 확인용)");
     }
 

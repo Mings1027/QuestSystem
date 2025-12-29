@@ -219,6 +219,8 @@ public class QuestEditor : EditorWindow
         };
         rightPane.Add(divider);
 
+        if (sceneManager == null)
+            sceneManager = FindFirstObjectByType<QuestSceneManager>();
         if (sceneManager != null) DrawSceneGuideConfig(selectedQuest);
     }
 
@@ -284,6 +286,20 @@ public class QuestEditor : EditorWindow
 
         SerializedProperty displayNameProp = currentQuestSO.FindProperty("displayName");
         if (displayNameProp != null) container.Add(new PropertyField(displayNameProp, "Display Name"));
+
+        VisualElement optionsRow = new VisualElement()
+            { style = { flexDirection = FlexDirection.Row, marginTop = 5, marginBottom = 5 } };
+
+        SerializedProperty autoStartProp = currentQuestSO.FindProperty("autoStart");
+        SerializedProperty autoCompleteProp = currentQuestSO.FindProperty("autoComplete");
+
+        // 스타일을 조금 다듬어서 한 줄에 넣거나 위아래로 배치
+        if (autoStartProp != null)
+            container.Add(new PropertyField(autoStartProp, "Auto Start (조건 충족 시 자동 시작)"));
+
+        if (autoCompleteProp != null)
+            container.Add(new PropertyField(autoCompleteProp, "Auto Complete (완료 시 자동 보상)"));
+        // -------------------------------------------------------------
 
         SerializedProperty reqProp = currentQuestSO.FindProperty("requirements");
         if (reqProp != null) DrawPolymorphicList(container, reqProp, "Requirements", typeof(QuestRequirement));
@@ -386,7 +402,7 @@ public class QuestEditor : EditorWindow
             foreach (var type in types)
             {
                 menu.AddItem(new GUIContent($"Create New/{type.Name}"), false,
-                    () => CreateAndAddStepDataSO(type, listProperty));
+                    () => CreateAndAddStepDataSo(type, listProperty));
             }
 
             menu.AddItem(new GUIContent("Add Empty Slot"), false, () =>
@@ -489,7 +505,7 @@ public class QuestEditor : EditorWindow
         parent.Add(root);
     }
 
-    private void CreateAndAddStepDataSO(Type type, SerializedProperty listProperty)
+    private void CreateAndAddStepDataSo(Type type, SerializedProperty listProperty)
     {
         string path = AssetDatabase.GetAssetPath(questDatabase);
         string parentFolder = System.IO.Path.GetDirectoryName(path);
@@ -517,23 +533,33 @@ public class QuestEditor : EditorWindow
         rightPane.Add(new Label("UI Guide Sequence (Scene)")
             { style = { fontSize = 16, unityFontStyleAndWeight = FontStyle.Bold, marginBottom = 10 } });
 
+        if (sceneManager == null) return;
+
         var sequenceData = GetOrCreateSequence(selectedQuest);
+
+        // 1. 데이터 준비
         SerializedObject serializedManager = new SerializedObject(sceneManager);
+        serializedManager.Update();
+
         SerializedProperty listProp = serializedManager.FindProperty("questSequences");
         int index = sceneManager.questSequences.IndexOf(sequenceData);
 
         if (index >= 0)
         {
-            SerializedProperty uiStepsProp = listProp.GetArrayElementAtIndex(index).FindPropertyRelative("uiSteps");
-            rightPane.Add(new HelpBox("Drag UI Objects to the list below.", HelpBoxMessageType.Info)
-                { style = { marginBottom = 10 } });
+            // 2. 정확한 프로퍼티 찾기 ('stepSequences'로 이름 변경된 것 반영)
+            SerializedProperty stepSeqsProp =
+                listProp.GetArrayElementAtIndex(index).FindPropertyRelative("stepSequences");
 
             VisualElement listContainer = new VisualElement();
             listContainer.style.ApplyBoxStyle(new Color(0.24f, 0.24f, 0.24f));
 
-            PropertyField listField = new PropertyField(uiStepsProp, "Sequence List");
-            listField.Bind(serializedManager);
-            listContainer.Add(listField);
+            // [핵심] 그냥 PropertyField 하나만 던져주면, 유니티가 알아서 [Serializable] 구조를 보고 그려줍니다.
+            PropertyField simpleListField = new PropertyField(stepSeqsProp, "Step Guide List");
+
+            // 데이터 바인딩 (이게 있어야 실제 값이 연결됨)
+            simpleListField.Bind(serializedManager);
+
+            listContainer.Add(simpleListField);
             rightPane.Add(listContainer);
         }
     }
@@ -543,7 +569,13 @@ public class QuestEditor : EditorWindow
         foreach (var seq in sceneManager.questSequences)
             if (seq.quest == quest)
                 return seq;
-        var newSeq = new QuestSceneManager.QuestSequence() { quest = quest, uiSteps = new List<RectTransform>() };
+
+        var newSeq = new QuestSceneManager.QuestSequence()
+        {
+            quest = quest,
+            stepSequences = new List<QuestSceneManager.StepGuideSequence>()
+        };
+
         sceneManager.questSequences.Add(newSeq);
         EditorUtility.SetDirty(sceneManager);
         return newSeq;

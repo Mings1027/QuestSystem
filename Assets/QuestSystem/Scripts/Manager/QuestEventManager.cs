@@ -10,14 +10,25 @@ public class QuestEventManager : Singleton<QuestEventManager> // 제네릭 싱�
     public void MonsterKilled(string monsterId)
     {
         onMonsterKilled?.Invoke(monsterId);
+
+        NotifyQuestConditionChanged();
     }
 
     public event Action<StatType, int> onStatChanged;
     public void StatChanged(StatType type, int newValue)
     {
         onStatChanged?.Invoke(type, newValue);
+        
+        NotifyQuestConditionChanged();
     }
 
+    public event Action onQuestConditionChanged;
+    
+    public void NotifyQuestConditionChanged()
+    {
+        onQuestConditionChanged?.Invoke();
+    }
+    
     public void Init()
     {
         questEvents = new QuestEvents();

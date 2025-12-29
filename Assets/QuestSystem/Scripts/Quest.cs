@@ -7,7 +7,7 @@ public class Quest
 {
     // static info
     public QuestInfoSO info;
-    
+
     // state info
     public QuestState state;
     private int currentQuestStepIndex;
@@ -57,38 +57,62 @@ public class Quest
 
     public void InstantiateCurrentQuestStep(Transform parentTransform)
     {
-        GameObject questStepPrefab = GetCurrentQuestStepPrefab();
-        if (questStepPrefab != null)
+        if (!CurrentStepExists())
         {
-            QuestStep questStep = Object.Instantiate(questStepPrefab, parentTransform)
-                .GetComponent<QuestStep>();
-            
-            QuestStepDataSO stepData = info.steps[currentQuestStepIndex];
+            Debug.LogWarning("Quest Step Index Out of Range: " + info.id);
+            return;
+        }
 
+        // 1. 현재 단계의 데이터 SO 가져오기
+        QuestStepDataSO stepData = info.steps[currentQuestStepIndex];
+
+        if (stepData == null)
+        {
+            Debug.LogError($"Quest Step Data is null. QuestId: {info.id}, StepIndex: {currentQuestStepIndex}");
+            return;
+        }
+
+        // 2. SO에게 어떤 컴포넌트 타입이 필요한지 물어보기
+        Type stepType = stepData.GetQuestStepType();
+
+        // 3. 빈 게임오브젝트 생성 ("QuestStep_0_몬스터처치" 같은 이름 부여)
+        GameObject stepGO = new GameObject($"{info.id}_Step_{currentQuestStepIndex}_{stepType.Name}");
+        stepGO.transform.SetParent(parentTransform);
+
+        // 4. 해당 컴포넌트 부착 (AddComponent)
+        QuestStep questStep = stepGO.AddComponent(stepType) as QuestStep;
+
+        // 5. 초기화
+        if (questStep != null)
+        {
             questStep.InitializeQuestStep(
                 info.id,
                 currentQuestStepIndex,
                 questStepStates[currentQuestStepIndex].state,
-                stepData
+                stepData // 데이터 SO 주입
             );
-        }
-    }
-
-    private GameObject GetCurrentQuestStepPrefab()
-    {
-        GameObject questStepPrefab = null;
-        if (CurrentStepExists())
-        {
-            questStepPrefab = info.steps[currentQuestStepIndex].stepPrefab;
         }
         else
         {
-            Debug.LogWarning("Tried to get quest step prefab, but stepIndex was out of range indicating that "
-                             + "there's no current step: QuestId=" + info.id + ", stepIndex=" + currentQuestStepIndex);
+            Debug.LogError($"Failed to add QuestStep component: {stepType.Name} does not inherit from QuestStep.");
         }
-
-        return questStepPrefab;
     }
+
+    // private GameObject GetCurrentQuestStepPrefab()
+    // {
+    //     GameObject questStepPrefab = null;
+    //     if (CurrentStepExists())
+    //     {
+    //         questStepPrefab = info.steps[currentQuestStepIndex].stepPrefab;
+    //     }
+    //     else
+    //     {
+    //         Debug.LogWarning("Tried to get quest step prefab, but stepIndex was out of range indicating that "
+    //                          + "there's no current step: QuestId=" + info.id + ", stepIndex=" + currentQuestStepIndex);
+    //     }
+    //
+    //     return questStepPrefab;
+    // }
 
     public void StoreQuestStepState(QuestStepState questStepState, int stepIndex)
     {

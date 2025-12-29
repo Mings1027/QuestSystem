@@ -1011,6 +1011,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameTester
   levelToSet: 5
+  attackPower: 0
   monsterIdToKill: Slime
 --- !u!4 &1169812111
 Transform:
@@ -1039,6 +1040,7 @@ GameObject:
   - component: {fileID: 1259413180}
   - component: {fileID: 1259413179}
   - component: {fileID: 1259413178}
+  - component: {fileID: 1259413181}
   m_Layer: 5
   m_Name: AttackPower Btn
   m_TagString: Untagged
@@ -1148,6 +1150,19 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1259413176}
   m_CullTransparentMesh: 1
+--- !u!114 &1259413181
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1259413176}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: af9bc76c3c734073b767cac517ae47e7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::QuestSystem.Scripts.Test.AttackPowerButton
+  statType: 0
 --- !u!1 &1401655739
 GameObject:
   m_ObjectHideFlags: 0
@@ -1246,6 +1261,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TestQuestStarter
   levelToSet: 5
+  attackPower: 0
   monsterIdToKill: Slime
 --- !u!4 &1465383092
 Transform:
@@ -1606,16 +1622,26 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b3172603a6cd4236a60b438afbeecbb4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::QuestSceneManager
+  useDontDestroyOnLoad: 0
   questSequences:
   - quest: {fileID: 11400000, guid: a87315ab2c4a54cf291987a151c23cb8, type: 2}
-    uiSteps:
-    - {fileID: 1045373343}
-    - {fileID: 2067319915}
-    - {fileID: 1259413177}
+    stepSequences:
+    - description: 
+      uiTargets: []
+    - description: "\uACF5\uACA9\uB825 10\uCC0D\uAE30"
+      uiTargets:
+      - {fileID: 1045373343}
+      - {fileID: 2067319915}
+      - {fileID: 1259413177}
   - quest: {fileID: 11400000, guid: c9f64cd1b0bf446cda8fa395a9bafe6c, type: 2}
-    uiSteps: []
+    stepSequences:
+    - description: 
+      uiTargets:
+      - {fileID: 1045373343}
+      - {fileID: 2067319915}
+      - {fileID: 1259413177}
   - quest: {fileID: 11400000, guid: fb4d69872b9d84df5bcb122c07c4af62, type: 2}
-    uiSteps: []
+    stepSequences: []
   pingPrefab: {fileID: 7861908588058192612, guid: 0e6fb3ac354454dd697b2ac05e93ba4f, type: 3}
 --- !u!4 &2035159846
 Transform:

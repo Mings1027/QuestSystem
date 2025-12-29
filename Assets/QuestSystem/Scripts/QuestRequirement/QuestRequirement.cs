@@ -4,11 +4,10 @@ using System;
 [Serializable]
 public abstract class QuestRequirement
 {
-    public string label = "조건 작성"; 
-    
+    public string label = "조건 작성";
+
     // 조건이 충족되었는지 확인하는 함수 (true면 통과)
     public abstract bool IsMet();
- 
 }
 
 [System.Serializable]
@@ -34,9 +33,9 @@ public class SharedRequirement : QuestRequirement
         }
 
         return true; // 모두 만족하면 통과
-    } 
+    }
 }
- 
+
 [Serializable]
 public class QuestFinishedRequirement : QuestRequirement
 {
@@ -44,11 +43,18 @@ public class QuestFinishedRequirement : QuestRequirement
 
     public override bool IsMet()
     {
-        // 퀘스트 매니저를 통해 해당 ID의 퀘스트가 끝났는지 확인
-        // QuestManager가 싱글톤(instance)이라고 가정
-        // return QuestManager.instance.GetQuestState(requiredQuestId) == QuestState.FINISHED;
-        return true; // 테스트용
-    } 
+        // 1. 설정된 퀘스트가 없으면 그냥 통과 (설정 실수 방지)
+        if (questInfoSo == null) return true;
+
+        // 2. QuestManager에서 해당 퀘스트를 찾아 상태 확인
+        // (QuestManager.Instance가 있는지 확인)
+        if (QuestManager.Instance == null) return false;
+
+        Quest quest = QuestManager.Instance.GetQuestById(questInfoSo.id);
+
+        // 3. 퀘스트가 존재하고, 상태가 FINISHED여야만 true 반환
+        return quest != null && quest.state == QuestState.FINISHED;
+    }
 }
 
 [Serializable]
