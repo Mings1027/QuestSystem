@@ -8,8 +8,7 @@ public class QuestSceneManager : Singleton<QuestSceneManager>
     [System.Serializable]
     public class StepGuideSequence
     {
-        [Tooltip("에디터 식별용 메모 (예: 인벤 열기 -> 장착)")]
-        public string description; 
+        [Tooltip("에디터 식별용 메모 (예: 인벤 열기 -> 장착)")] public string description;
         public List<RectTransform> uiTargets; // 순서대로 눌러야 할 버튼들
     }
 
@@ -29,9 +28,9 @@ public class QuestSceneManager : Singleton<QuestSceneManager>
 
     // 현재 진행 상태
     private List<RectTransform> currentUiPath; // 현재 스텝에서 눌러야 할 UI 목록
-    private int currentUiIndex = 0;            // 목록 중 몇 번째를 눌러야 하는지 (서브 인덱스)
-    
-    private GameObject currentPing;
+    private int currentUiIndex = 0; // 목록 중 몇 번째를 눌러야 하는지 (서브 인덱스)
+
+    private RectTransform currentPing;
     [SerializeField] private GameObject pingPrefab;
 
     public void Init()
@@ -91,7 +90,7 @@ public class QuestSceneManager : Singleton<QuestSceneManager>
             }
         }
     }
- 
+
     private void ActivateUiTarget()
     {
         HidePing();
@@ -127,7 +126,7 @@ public class QuestSceneManager : Singleton<QuestSceneManager>
 
         // 다음 UI 순서로 이동
         currentUiIndex++;
-        
+
         if (currentUiIndex < currentUiPath.Count)
         {
             // 아직 누를 버튼이 더 남았다면 다음 핑 표시
@@ -137,7 +136,7 @@ public class QuestSceneManager : Singleton<QuestSceneManager>
         {
             // 이번 스텝의 UI 가이드는 끝남 (핑 제거)
             // 실제 퀘스트 완료 이벤트(AdvanceQuest)가 발생할 때까지 대기
-            StopGuide(); 
+            StopGuide();
         }
     }
 
@@ -152,12 +151,24 @@ public class QuestSceneManager : Singleton<QuestSceneManager>
     {
         if (pingPrefab != null && target.gameObject.activeInHierarchy)
         {
-            currentPing = Instantiate(pingPrefab, target);
+            if (currentPing == null)
+                currentPing = Instantiate(pingPrefab, target).GetComponent<RectTransform>();
+
+            Debug.Log(target.name);
+            currentPing.SetParent(target, false);
+            currentPing.anchoredPosition = Vector2.zero;
+            currentPing.gameObject.SetActive(true);
+            currentPing.SetAsLastSibling();
+            Debug.Log("ShowPing");
         }
     }
 
     public void HidePing()
     {
-        if (currentPing != null) Destroy(currentPing);
+        if (currentPing != null)
+        {
+            currentPing.gameObject.SetActive(false);
+            Debug.Log("HidePing");
+        }
     }
 }
