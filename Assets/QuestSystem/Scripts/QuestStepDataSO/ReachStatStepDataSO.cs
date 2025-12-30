@@ -12,7 +12,7 @@ public class ReachStatStepDataSO : QuestStepDataSO
         [HideInInspector] public string questId;
         
         [Tooltip("퀘스트 순서 (자동 갱신됨)")]
-        public int displayIndex;
+        public int questNumber;
         
         [Tooltip("목표 스탯 수치")]
         public int targetValue;
@@ -20,16 +20,14 @@ public class ReachStatStepDataSO : QuestStepDataSO
         public StatStepInfo(string id, int index, int value)
         {
             questId = id;
-            displayIndex = index;
+            questNumber = index;
             targetValue = value;
         }
     }
 
-    [Header("공통 설정")]
     public StatType targetStat;
 
     [Header("퀘스트별 목표 설정")]
-    // [변경점 2] 통합 리스트
     public List<StatStepInfo> stepInfos = new List<StatStepInfo>();
 
     public override Type GetQuestStepType() => typeof(ReachStatQuestStep);
@@ -48,7 +46,7 @@ public class ReachStatStepDataSO : QuestStepDataSO
 
         if (info != null)
         {
-            info.displayIndex = questIndex;
+            info.questNumber = questIndex;
         }
         else
         {
@@ -56,6 +54,6 @@ public class ReachStatStepDataSO : QuestStepDataSO
         }
 
         // [핵심] 정렬
-        stepInfos.Sort((a, b) => a.displayIndex.CompareTo(b.displayIndex));
+        stepInfos.Sort((a, b) => a.questNumber.CompareTo(b.questNumber));
     }
 }
