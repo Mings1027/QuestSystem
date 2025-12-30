@@ -393,7 +393,7 @@ public class QuestEditor : EditorWindow
                 SerializedObject stepSO_Serialized = new SerializedObject(dataSO);
                 stepSO_Serialized.Update();
 
-                Foldout soFoldout = new Foldout() { text = "Edit Value (This Quest Only)", value = true, style = { marginLeft = 15 } };
+                Foldout soFoldout = new Foldout() { text = "Edit Value", value = true, style = { marginLeft = 15 } };
                 
                 SerializedProperty iter = stepSO_Serialized.GetIterator();
                 iter.NextVisible(true); 
@@ -425,7 +425,7 @@ public class QuestEditor : EditorWindow
                             valueBox.style.ApplyBoxStyle(new Color(0.25f, 0.25f, 0.3f));
                             valueBox.style.marginTop = 5;
 
-                            PropertyField entryField = new PropertyField(entry, "My Target Value");
+                            PropertyField entryField = new PropertyField(entry, "Target Value");
                             entryField.Bind(stepSO_Serialized);
                             
                             valueBox.Add(entryField);
