@@ -65,10 +65,15 @@ public class GuideQuestButton : MonoBehaviour
         
         if (currentQuest != null)
         {
-            // [조건 A] 완료 가능할 때 (보상 받기 위해 핑 표시)
+            if (currentQuest.state == QuestState.IN_PROGRESS)
+            {
+                return; 
+            }
+            
+            //  완료 가능할 때 (보상 받기 위해 핑 표시)
             bool canFinish = (currentQuest.state == QuestState.CAN_FINISH);
             
-            // [조건 B] 시작 가능할 때 (수동 시작을 유도하기 위해 핑 표시)
+            // 시작 가능할 때 (수동 시작을 유도하기 위해 핑 표시)
             // 단, AutoStart가 켜져 있으면 자동으로 시작될 테니 굳이 핑을 찍지 않아도 됨(순식간에 넘어감).
             // AutoStart가 꺼져 있을 때만 유저가 눌러야 하므로 핑을 찍음.
             bool canStart = (currentQuest.state == QuestState.CAN_START && !currentQuest.info.autoStart);
