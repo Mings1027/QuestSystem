@@ -9,7 +9,8 @@ public class GameTester : MonoBehaviour
     public int attackPower;
 
     [Header("몬스터 사냥 테스트")]
-    public string monsterIdToKill = "Slime";
+    public string slimeId = "Slime";
+    public string goblinId = "Goblin"; 
 
     [ContextMenu("1. 성 레벨 설정")]
     public void SetCastleLevel()
@@ -19,11 +20,18 @@ public class GameTester : MonoBehaviour
         Debug.Log($"[Test] 성 레벨을 {levelToSet}로 설정함. (조건 충족 확인용)");
     }
 
-    [ContextMenu("2. 몬스터 1마리 처치")]
-    public void KillMonster()
+    [ContextMenu("슬라임 1마리 처치")]
+    public void KillSlime()
     {
-        Debug.Log($"[Test] 몬스터 처치: {monsterIdToKill}");
-        QuestEventManager.Instance.MonsterKilled(monsterIdToKill);
+        Debug.Log($"몬스터처치 1마리: {slimeId}");
+        QuestEventManager.Instance.MonsterKilled(slimeId);
+    }
+
+    [ContextMenu("고블린 1마리 처치")]
+    public void KillGoblin()
+    {
+        Debug.Log($"몬스터처치 1마리: {goblinId}");
+        QuestEventManager.Instance.MonsterKilled(goblinId);
     }
 
     [ContextMenu("공격력 설정")]
@@ -37,7 +45,7 @@ public class GameTester : MonoBehaviour
     {
         for (int i = 0; i < 10; i++)
         {
-            KillMonster();
+            KillSlime();
         }
     }
 }
