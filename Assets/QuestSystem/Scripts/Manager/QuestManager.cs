@@ -152,8 +152,9 @@ public class QuestManager : Singleton<QuestManager>
     private void StartQuest(string id)
     {
         Quest quest = GetQuestById(id);
-        quest.InstantiateCurrentQuestStep(transform);
+        // 여기 순서 바꿈 다시 바꿔야할지도
         ChangeQuestState(quest.info.ID, QuestState.IN_PROGRESS);
+        quest.InstantiateCurrentQuestStep(transform);
     }
 
     private void AdvanceQuest(string id)
