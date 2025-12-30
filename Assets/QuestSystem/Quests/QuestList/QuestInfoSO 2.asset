@@ -15,11 +15,10 @@ MonoBehaviour:
   id: QuestInfoSO 2
   displayName: "\uC2AC\uB77C\uC78410\uB9C8\uB9AC"
   autoStart: 1
-  autoComplete: 1
-  requirements: []
+  autoComplete: 0
+  requirements:
+  - {fileID: 11400000, guid: c45a09521f2aa4f269f7a0e0b23048c8, type: 2}
   steps:
   - {fileID: 11400000, guid: 391b4164bc8ab49b0ba92df98b5a4c86, type: 2}
-  rewards: []
-  references:
-    version: 2
-    RefIds: []
+  rewards:
+  - {fileID: 11400000, guid: 07d726b58e4124bb9938faaa03ed2df7, type: 2}

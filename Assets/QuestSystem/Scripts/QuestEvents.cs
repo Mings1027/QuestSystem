@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 
 public class QuestEvents
 {
@@ -8,6 +9,7 @@ public class QuestEvents
         if (onStartQuest != null)
         {
             onStartQuest(id);
+            Debug.Log("Start Quest: " + id + "");
         }
     }
 
@@ -17,6 +19,7 @@ public class QuestEvents
         if (onAdvanceQuest != null)
         {
             onAdvanceQuest(id);
+            Debug.Log("Advance Quest: " + id + "");
         }
     }
 
@@ -26,6 +29,7 @@ public class QuestEvents
         if (onFinishQuest != null)
         {
             onFinishQuest(id);
+            Debug.Log("Finish Quest: " + id + "");
         }
     }
 
@@ -35,6 +39,7 @@ public class QuestEvents
         if (onQuestStateChange != null)
         {
             onQuestStateChange(quest);
+            Debug.Log($"Quest State Change: {quest.info.ID}");
         }
     }
 
@@ -44,6 +49,7 @@ public class QuestEvents
         if (onQuestStepStateChange != null)
         {
             onQuestStepStateChange(id, stepIndex, questStepState);
+            Debug.Log($"Quest Step State Change: {id} / {stepIndex} / {questStepState.state}");
         }
     }
 }

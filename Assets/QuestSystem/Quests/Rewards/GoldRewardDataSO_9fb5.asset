@@ -9,14 +9,17 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 92db6caa4b934645adfe8fa1a977af10, type: 3}
-  m_Name: Step_KillMonsterStepDataSO_b75a
-  m_EditorClassIdentifier: Assembly-CSharp::KillMonsterStepDataSO
-  monsterID: Slime
+  m_Script: {fileID: 11500000, guid: c9b017cd87d242048d1b961e30195498, type: 3}
+  m_Name: GoldRewardDataSO_9fb5
+  m_EditorClassIdentifier: Assembly-CSharp::GoldRewardDataSO
+  label: "\uACE8\uB4DC\uC9C0\uAE09"
   questSpecificDatas:
+  - questId: QuestInfoSO 3
+    questIndex: 0
+    goldAmount: 500
   - questId: QuestInfoSO 2
     questIndex: 1
-    killCount: 1
+    goldAmount: 300
   - questId: QuestInfoSO
     questIndex: 2
-    killCount: 1
+    goldAmount: 100

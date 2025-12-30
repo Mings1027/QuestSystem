@@ -4,85 +4,36 @@ using UnityEngine.UI;
 public class GuideQuestButton : MonoBehaviour
 {
     private Button myButton;
-    private RectTransform myRectTransform;
+    // QuestSceneManager가 이 버튼의 위치를 알 수 있도록 프로퍼티 제공
+    public RectTransform MyRect => GetComponent<RectTransform>();
 
     private void Awake()
     {
         myButton = GetComponent<Button>();
-        myRectTransform = GetComponent<RectTransform>();
     }
 
     private void OnEnable()
     {
         myButton.onClick.AddListener(OnClickGuide);
-
-        if (QuestEventManager.Instance != null)
+        
+        // 버튼이 활성화될 때, 매니저에게 "나 켜졌어, 핑 상태 확인해줘"라고 요청
+        if (QuestSceneManager.Instance != null)
         {
-            QuestEventManager.Instance.questEvents.onQuestStateChange += OnQuestStateChange;
-            CheckPingState();
+            QuestSceneManager.Instance.RefreshGuideState();
         }
     }
 
     private void OnDisable()
     {
         myButton.onClick.RemoveListener(OnClickGuide);
-
-        if (QuestEventManager.Instance != null)
-        {
-            QuestEventManager.Instance.questEvents.onQuestStateChange -= OnQuestStateChange;
-        }
-
-        // 버튼이 꺼질 때 핑도 같이 꺼주는 센스
-        if (QuestSceneManager.Instance != null)
-        {
-            QuestSceneManager.Instance.HidePing();
-        }
     }
 
     private void OnClickGuide()
     {
         if (QuestManager.Instance != null)
         {
-            // 다음 순서의 퀘스트를 찾아 시작 시도
+            // 로직 실행 (핑 제어는 매니저가 알아서 함)
             QuestManager.Instance.TryStartNextQuest();
-        }
-    }
-
-    private void OnQuestStateChange(Quest quest)
-    {
-        CheckPingState();
-    }
-
-    private void CheckPingState()
-    {
-        if (QuestManager.Instance == null || QuestSceneManager.Instance == null) return;
-
-        // 1. 현재 진행해야 할 퀘스트 순서 가져오기
-        int currentSequenceIndex = DBPlayerGameData.Instance.completedQuestNumber + 1;
-        
-        // 2. 해당 퀘스트 정보 가져오기 (QuestManager에 이 함수가 있어야 합니다!)
-        Quest currentQuest = QuestManager.Instance.GetQuestBySequenceIndex(currentSequenceIndex);
-        
-        if (currentQuest != null)
-        {
-            if (currentQuest.state == QuestState.IN_PROGRESS)
-            {
-                return; 
-            }
-            
-            //  완료 가능할 때 (보상 받기 위해 핑 표시)
-            bool canFinish = (currentQuest.state == QuestState.CAN_FINISH);
-            
-            // 시작 가능할 때 (수동 시작을 유도하기 위해 핑 표시)
-            // 단, AutoStart가 켜져 있으면 자동으로 시작될 테니 굳이 핑을 찍지 않아도 됨(순식간에 넘어감).
-            // AutoStart가 꺼져 있을 때만 유저가 눌러야 하므로 핑을 찍음.
-            bool canStart = (currentQuest.state == QuestState.CAN_START && !currentQuest.info.autoStart);
-
-            if (canFinish || canStart)
-            {
-                // 내 위치(버튼)에 핑을 찍어달라고 요청
-                QuestSceneManager.Instance.ShowPing(myRectTransform);
-            }
         }
     }
 }

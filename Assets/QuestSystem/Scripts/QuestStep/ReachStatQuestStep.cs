@@ -18,11 +18,11 @@ public class ReachStatQuestStep : QuestStep
         if (myData != null)
         {
             // 1. 공통 데이터 (어떤 스탯인지)
-            this.targetStat = myData.targetStat;
+            targetStat = myData.targetStat;
             
             // 2. [핵심] 퀘스트별 고유 데이터 (목표 수치)
             // 부모 클래스(QuestStep)에 저장된 questId를 사용해 조회
-            this.targetValue = myData.GetTargetValueForQuest(this.questId);
+            targetValue = myData.GetTargetValueForQuest(questId);
         }
         else
         {

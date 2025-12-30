@@ -14,11 +14,11 @@ public class KillMonsterQuestStep : QuestStep
         if (myData != null)
         {
             // 1. 공통 데이터 (몬스터 종류)
-            this.targetMonsterId = myData.monsterID;
+            targetMonsterId = myData.monsterID;
             
             // 2. [핵심] 퀘스트별 고유 데이터 (마릿수)
             // 부모 클래스(QuestStep)에 저장된 questId를 사용해 조회
-            this.targetKillCount = myData.GetKillCountForQuest(this.questId);
+            targetKillCount = myData.GetKillCountForQuest(questId);
         }
     }
 

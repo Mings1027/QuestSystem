@@ -12,7 +12,7 @@ public class QuestStepState
 
     public QuestStepState()
     {
-        this.state = "";
-        this.status = "";
+        state = "";
+        status = "";
     }
 }

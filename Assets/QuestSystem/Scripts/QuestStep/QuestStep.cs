@@ -30,7 +30,7 @@ public abstract class QuestStep : MonoBehaviour
             isFinished = true;
             // 이벤트 매니저 호출
             QuestEventManager.Instance.questEvents.AdvanceQuest(questId);
-            Destroy(this.gameObject);
+            Destroy(gameObject);
         }
     }
 

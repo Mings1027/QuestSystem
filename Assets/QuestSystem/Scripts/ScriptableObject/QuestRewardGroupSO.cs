@@ -5,5 +5,5 @@ using UnityEngine;
 public class QuestRewardGroupSO : ScriptableObject
 {
     [SerializeReference]
-    public List<QuestReward> rewards = new List<QuestReward>();
+    public List<QuestReward> rewards = new();
 }

@@ -18,21 +18,19 @@ public class QuestInfoSO : ScriptableObject
     public bool autoComplete;
     
     [Header("Requirements")]
-    [SerializeReference]
-    public List<QuestRequirement> requirements = new();
+    public List<QuestRequirementDataSO> requirements = new();
     
     [Header("Steps")]
     public List<QuestStepDataSO> steps = new();
     
     [Header("Rewards")]
-    [SerializeReference] 
-    public List<QuestReward> rewards = new();
-
+    public List<QuestRewardDataSO> rewards = new();
+    
     // ensure the id is always the name of the Scriptable Object asset
     private void OnValidate()
     {
 #if UNITY_EDITOR
-        id = this.name;
+        id = name;
         UnityEditor.EditorUtility.SetDirty(this);
 #endif
     }

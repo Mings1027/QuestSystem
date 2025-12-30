@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -13,7 +14,7 @@ public class QuestManager : Singleton<QuestManager>
     [SerializeField] private QuestDatabaseSO questDatabase;
 
     [Header("Debug View")]
-    [SerializeField] private List<Quest> debugQuestList = new List<Quest>();
+    [SerializeField] private List<Quest> debugQuestList = new();
 
     private Dictionary<string, Quest> questMap;
 
@@ -21,11 +22,10 @@ public class QuestManager : Singleton<QuestManager>
     {
         base.Awake();
 
+        questMap = CreateQuestMap();
+
         if (questEventManager != null) questEventManager.Init();
         if (questSceneManager != null) questSceneManager.Init();
-
-        // 맵 생성 및 상태 초기화
-        questMap = CreateQuestMap();
     }
 
     private void OnEnable()
@@ -51,18 +51,28 @@ public class QuestManager : Singleton<QuestManager>
 
     private void Start()
     {
-        // 1. 기존 진행 중인 퀘스트 복구
-        foreach (Quest quest in questMap.Values)
-        {
-            if (quest.state == QuestState.IN_PROGRESS)
-            {
-                quest.InstantiateCurrentQuestStep(this.transform);
-            }
+        int currentSeqIndex = DBPlayerGameData.Instance.completedQuestNumber + 1;
 
-            QuestEventManager.Instance.questEvents.QuestStateChange(quest);
+        // 1. 인덱스가 DB 범위 내에 있는지 확인 (엔딩 본 이후가 아닐 때)
+        if (questDatabase != null && currentSeqIndex < questDatabase.quests.Count)
+        {
+            // 해당 순서의 퀘스트 객체 가져오기 (이미 만들어둔 유틸 함수 활용)
+            Quest currentQuest = GetQuestBySequenceIndex(currentSeqIndex);
+
+            if (currentQuest != null)
+            {
+                // 2. 만약 저장된 상태가 '진행 중(IN_PROGRESS)'이라면 -> 중단된 지점(Step) 복구
+                if (currentQuest.state == QuestState.IN_PROGRESS)
+                {
+                    currentQuest.InstantiateCurrentQuestStep(transform);
+
+                    // QuestSceneManager에게 "이 퀘스트 진행 중이니 핑 찍어줘"라고 알림
+                    QuestEventManager.Instance.questEvents.QuestStateChange(currentQuest);
+                }
+            }
         }
 
-        // [추가됨] 게임 시작 시 자동 시작 가능한 퀘스트 체크
+        // 2. 자동 시작 가능한 퀘스트 체크
         QuestConditionChangedQuests();
     }
 
@@ -87,41 +97,22 @@ public class QuestManager : Singleton<QuestManager>
 
         Quest nextQuest = GetQuestById(nextQuestInfo.ID);
 
-        // ---------------------------------------------------------
-        // [핵심 수정] 상태별 분기 처리 강화
-        // ---------------------------------------------------------
-
-        // Case A: 이미 모든 스텝을 완수하고 '보상 대기(CAN_FINISH)' 상태인 경우
         if (nextQuest.state == QuestState.CAN_FINISH)
         {
+            // 완료 가능 상태면 -> 완료 처리
             QuestEventManager.Instance.questEvents.FinishQuest(nextQuest.info.ID);
-            Debug.Log($"[QuestManager] 퀘스트 완료 및 보상 수령: {nextQuestInfo.displayName}");
-            return;
         }
-
-        // Case B: 이미 진행 중인 경우 (IN_PROGRESS)
-        if (nextQuest.state == QuestState.IN_PROGRESS)
+        else if (nextQuest.state == QuestState.REQUIREMENTS_NOT_MET || nextQuest.state == QuestState.CAN_START)
         {
-            Debug.Log($"[QuestManager] '{nextQuestInfo.displayName}' 퀘스트는 이미 진행 중입니다.");
-            return;
-        }
-
-        // Case C: 이미 완료된 경우 (FINISHED)
-        if (nextQuest.state == QuestState.FINISHED)
-        {
-            // (이론상 completedQuestNumber + 1 로 가져오므로 여기 걸릴 일은 드뭅니다)
-            return;
-        }
-
-        // Case D: 시작 가능한 경우 (REQUIREMENTS_NOT_MET 이지만 조건 체크 후 시작)
-        if (CheckRequirementsMet(nextQuest))
-        {
-            QuestEventManager.Instance.questEvents.StartQuest(nextQuest.info.ID);
-            Debug.Log($"[QuestManager] 가이드 퀘스트 시작: {nextQuestInfo.displayName}");
-        }
-        else
-        {
-            Debug.Log($"[QuestManager] '{nextQuestInfo.displayName}' 시작 불가: 조건이 부족합니다.");
+            // 조건이 맞으면 -> 시작 처리
+            if (CheckRequirementsMet(nextQuest))
+            {
+                QuestEventManager.Instance.questEvents.StartQuest(nextQuest.info.ID);
+            }
+            else
+            {
+                Debug.Log($"[QuestManager] 조건 부족으로 시작 불가: {nextQuestInfo.displayName}");
+            }
         }
     }
 
@@ -133,26 +124,50 @@ public class QuestManager : Singleton<QuestManager>
     {
         Quest quest = GetQuestById(id);
         quest.state = state;
+        // 상태 변경 이벤트를 쏘면 -> QuestSceneManager.RefreshGuideState()가 호출됨
         QuestEventManager.Instance.questEvents.QuestStateChange(quest);
     }
 
     private bool CheckRequirementsMet(Quest quest)
     {
-        var requirements = quest.info.requirements;
-        if (requirements == null || requirements.Count == 0) return true;
+        // 조건이 없으면 통과
+        if (quest.info.requirements == null || quest.info.requirements.Count == 0) return true;
 
-        foreach (var req in requirements)
+        bool allMet = true;
+
+        // 조건을 검사하기 위한 임시 게임오브젝트 생성
+        // (최적화를 위해선 싱글톤에 미리 만들어둔 'CheckRunner' 같은 걸 쓰는 게 좋음)
+        GameObject runner = new GameObject($"ReqCheck_{quest.info.ID}");
+        runner.transform.SetParent(transform);
+
+        foreach (var reqData in quest.info.requirements)
         {
-            if (!req.IsMet()) return false;
+            // 1. 컴포넌트 추가
+            Type type = reqData.GetRequirementType();
+            QuestRequirement reqComponent = runner.AddComponent(type) as QuestRequirement;
+
+            // 2. 초기화 및 검사
+            if (reqComponent != null)
+            {
+                reqComponent.Init(reqData, quest.info.ID);
+                if (!reqComponent.IsMet())
+                {
+                    allMet = false;
+                    break; // 하나라도 실패하면 끝
+                }
+            }
         }
 
-        return true;
+        // 검사 끝났으니 파괴
+        Destroy(runner);
+
+        return allMet;
     }
 
     private void StartQuest(string id)
     {
         Quest quest = GetQuestById(id);
-        // 여기 순서 바꿈 다시 바꿔야할지도
+        // 상태를 IN_PROGRESS로 변경 -> 이 순간 가이드 버튼 핑은 꺼지고, 타겟 핑이 켜짐
         ChangeQuestState(quest.info.ID, QuestState.IN_PROGRESS);
         quest.InstantiateCurrentQuestStep(transform);
     }
@@ -167,10 +182,7 @@ public class QuestManager : Singleton<QuestManager>
         {
             quest.InstantiateCurrentQuestStep(transform);
 
-            if (questSceneManager != null)
-            {
-                questSceneManager.StartGuide(id);
-            }
+            QuestEventManager.Instance.questEvents.QuestStateChange(quest);
         }
         else
         {
@@ -189,21 +201,42 @@ public class QuestManager : Singleton<QuestManager>
     {
         Quest quest = GetQuestById(id);
         ClaimRewards(quest);
+
+        // FINISHED로 변경 -> 핑 모두 꺼짐
         ChangeQuestState(quest.info.ID, QuestState.FINISHED);
 
-        // [중요] 완료된 퀘스트 번호 갱신
         int currentQuestIndex = questDatabase.quests.IndexOf(quest.info);
         if (currentQuestIndex > DBPlayerGameData.Instance.completedQuestNumber)
         {
             DBPlayerGameData.Instance.completedQuestNumber = currentQuestIndex;
-            Debug.Log($"[Progress] 퀘스트 진행도 갱신: {currentQuestIndex}번 완료");
+
+            // 퀘스트 하나가 끝났으니, 다음 퀘스트의 자동 시작 여부를 체크
+            QuestConditionChangedQuests();
         }
     }
 
     private void ClaimRewards(Quest quest)
     {
         if (quest.info.rewards == null) return;
-        foreach (var reward in quest.info.rewards) reward.GiveReward();
+
+        foreach (var rewardData in quest.info.rewards)
+        {
+            // 1. 보상용 게임오브젝트 생성
+            GameObject rewardObj = new GameObject($"Reward_{rewardData.label}");
+            rewardObj.transform.SetParent(transform); // 매니저 하위로 정리
+
+            // 2. 컴포넌트 부착
+            Type type = rewardData.GetRewardType();
+            QuestReward rewardComponent = rewardObj.AddComponent(type) as QuestReward;
+
+            // 3. 초기화 및 지급
+            if (rewardComponent != null)
+            {
+                rewardComponent.Init(rewardData, quest.info.ID);
+                rewardComponent.GiveReward();
+                // GiveReward 내부에서 연출 후 Destroy(gameObject)를 호출해야 함
+            }
+        }
     }
 
     private void QuestStepStateChange(string id, int stepIndex, QuestStepState questStepState)
@@ -222,16 +255,16 @@ public class QuestManager : Singleton<QuestManager>
             {
                 // 1. 이 퀘스트가 DB 리스트의 몇 번째인지 확인
                 int myIndex = questDatabase.quests.IndexOf(quest.info);
-                
+
                 // 2. 지금 플레이어가 깨야 할 순서인지 확인 (완료된 번호 + 1)
                 int nextSequenceIndex = DBPlayerGameData.Instance.completedQuestNumber + 1;
 
                 // 3. 만약 내 차례가 아니라면? (아직 앞의 퀘스트를 안 깼거나, 이미 지나갔거나)
-                if (myIndex != nextSequenceIndex) 
+                if (myIndex != nextSequenceIndex)
                 {
                     continue; // 무시하고 다음 검사로 넘어감
                 }
-               
+
                 // 2. AutoStart 옵션이 켜져 있고
                 if (quest.info.autoStart)
                 {
@@ -311,7 +344,7 @@ public class QuestManager : Singleton<QuestManager>
         Debug.LogError("ID를 찾을 수 없음: " + id);
         return null;
     }
-    
+
     public Quest GetQuestBySequenceIndex(int index)
     {
         // 1. DB가 없거나 인덱스가 범위를 벗어나면 null 반환
