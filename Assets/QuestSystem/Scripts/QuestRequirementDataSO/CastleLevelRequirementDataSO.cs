@@ -29,7 +29,7 @@ public class CastleLevelRequirementDataSO : QuestRequirementDataSO
     public int GetTargetLevel(string id)
     {
         var info = questSpecificDatas.Find(x => x.questId == id);
-        return info != null ? info.targetLevel : 1; // 기본값
+        return info != null ? info.targetLevel : 1;
     }
 
     public override void SyncQuestData(string questId, int questIndex)

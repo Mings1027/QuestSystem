@@ -53,16 +53,16 @@ public class QuestManager : Singleton<QuestManager>
     {
         int currentSeqIndex = DBPlayerGameData.Instance.completedQuestNumber + 1;
 
-        // 1. 인덱스가 DB 범위 내에 있는지 확인 (엔딩 본 이후가 아닐 때)
+        // 1. 인덱스가 DB 범위 내에 있는지 확인
         if (questDatabase != null && currentSeqIndex < questDatabase.quests.Count)
         {
-            // 해당 순서의 퀘스트 객체 가져오기 (이미 만들어둔 유틸 함수 활용)
+            // 해당 순서의 퀘스트 객체 가져오기
             Quest currentQuest = GetQuestBySequenceIndex(currentSeqIndex);
 
             if (currentQuest != null)
             {
                 // 2. 만약 저장된 상태가 '진행 중(IN_PROGRESS)'이라면 -> 중단된 지점(Step) 복구
-                if (currentQuest.state == QuestState.IN_PROGRESS)
+                if (currentQuest.state == QuestState.InProgress)
                 {
                     currentQuest.InstantiateCurrentQuestStep(transform);
 
@@ -97,12 +97,12 @@ public class QuestManager : Singleton<QuestManager>
 
         Quest nextQuest = GetQuestById(nextQuestInfo.ID);
 
-        if (nextQuest.state == QuestState.CAN_FINISH)
+        if (nextQuest.state == QuestState.CanFinish)
         {
             // 완료 가능 상태면 -> 완료 처리
             QuestEventManager.Instance.questEvents.FinishQuest(nextQuest.info.ID);
         }
-        else if (nextQuest.state == QuestState.REQUIREMENTS_NOT_MET || nextQuest.state == QuestState.CAN_START)
+        else if (nextQuest.state == QuestState.Locked || nextQuest.state == QuestState.CanStart)
         {
             // 조건이 맞으면 -> 시작 처리
             if (CheckRequirementsMet(nextQuest))
@@ -124,7 +124,6 @@ public class QuestManager : Singleton<QuestManager>
     {
         Quest quest = GetQuestById(id);
         quest.state = state;
-        // 상태 변경 이벤트를 쏘면 -> QuestSceneManager.RefreshGuideState()가 호출됨
         QuestEventManager.Instance.questEvents.QuestStateChange(quest);
     }
 
@@ -168,7 +167,7 @@ public class QuestManager : Singleton<QuestManager>
     {
         Quest quest = GetQuestById(id);
         // 상태를 IN_PROGRESS로 변경 -> 이 순간 가이드 버튼 핑은 꺼지고, 타겟 핑이 켜짐
-        ChangeQuestState(quest.info.ID, QuestState.IN_PROGRESS);
+        ChangeQuestState(quest.info.ID, QuestState.InProgress);
         quest.InstantiateCurrentQuestStep(transform);
     }
 
@@ -192,7 +191,7 @@ public class QuestManager : Singleton<QuestManager>
             }
             else
             {
-                ChangeQuestState(quest.info.ID, QuestState.CAN_FINISH);
+                ChangeQuestState(quest.info.ID, QuestState.CanFinish);
             }
         }
     }
@@ -203,7 +202,7 @@ public class QuestManager : Singleton<QuestManager>
         ClaimRewards(quest);
 
         // FINISHED로 변경 -> 핑 모두 꺼짐
-        ChangeQuestState(quest.info.ID, QuestState.FINISHED);
+        ChangeQuestState(quest.info.ID, QuestState.Finished);
 
         int currentQuestIndex = questDatabase.quests.IndexOf(quest.info);
         if (currentQuestIndex > DBPlayerGameData.Instance.completedQuestNumber)
@@ -251,7 +250,7 @@ public class QuestManager : Singleton<QuestManager>
         foreach (Quest quest in questMap.Values)
         {
             // 1. 아직 시작 안 된 퀘스트 중에서
-            if (quest.state == QuestState.REQUIREMENTS_NOT_MET || quest.state == QuestState.CAN_START)
+            if (quest.state == QuestState.Locked || quest.state == QuestState.CanStart)
             {
                 // 1. 이 퀘스트가 DB 리스트의 몇 번째인지 확인
                 int myIndex = questDatabase.quests.IndexOf(quest.info);
@@ -278,9 +277,9 @@ public class QuestManager : Singleton<QuestManager>
                 else
                 {
                     // AutoStart가 꺼져있어도 조건이 맞으면 CAN_START로 변경 (가이드 버튼용)
-                    if (CheckRequirementsMet(quest) && quest.state != QuestState.CAN_START)
+                    if (CheckRequirementsMet(quest) && quest.state != QuestState.CanStart)
                     {
-                        ChangeQuestState(quest.info.ID, QuestState.CAN_START);
+                        ChangeQuestState(quest.info.ID, QuestState.CanStart);
                     }
                 }
             }
@@ -318,12 +317,12 @@ public class QuestManager : Singleton<QuestManager>
             if (i <= DBPlayerGameData.Instance.completedQuestNumber)
             {
                 // 이미 완료한 순서라면 -> FINISHED 상태로 설정
-                quest.state = QuestState.FINISHED;
+                quest.state = QuestState.Finished;
             }
             else
             {
                 // 아직 오지 않은 순서라면 -> 기본 상태 (REQUIREMENTS_NOT_MET)
-                quest.state = QuestState.REQUIREMENTS_NOT_MET;
+                quest.state = QuestState.Locked;
             }
 
             idToQuestMap.Add(questInfo.ID, quest);

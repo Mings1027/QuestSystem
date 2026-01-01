@@ -12,22 +12,19 @@ public class QuestEditor : EditorWindow
 {
     private QuestDatabaseSO questDatabase;
     private QuestSceneManager sceneManager;
-    private SerializedObject currentQuestSO;
     private SerializedObject serializedDatabase;
     private ReorderableList reorderableList;
 
     private ObjectField databaseField;
     private VisualElement contentContainer;
     private VisualElement warningContainer;
-    private TwoPaneSplitView splitView;
-    private IMGUIContainer leftListContainer;
     private ScrollView rightPane;
 
     [MenuItem("Tools/Quest Guide Editor")]
     public static void ShowWindow()
     {
         QuestEditor wnd = GetWindow<QuestEditor>();
-        wnd.titleContent = new GUIContent("Quest UI Guide");
+        wnd.titleContent = new GUIContent("Quest Editor");
         wnd.minSize = new Vector2(1000, 600);
     }
 
@@ -38,11 +35,15 @@ public class QuestEditor : EditorWindow
 
     public void CreateGUI()
     {
+        // 중복 생성 방지를 위해 루트 클리어
+        rootVisualElement.Clear();
+
         DrawHeader();
         warningContainer = new VisualElement();
         rootVisualElement.Add(warningContainer);
         contentContainer = new VisualElement() { style = { flexGrow = 1 } };
         rootVisualElement.Add(contentContainer);
+
         RefreshState();
     }
 
@@ -50,27 +51,20 @@ public class QuestEditor : EditorWindow
     {
         VisualElement header = new VisualElement();
         header.style.ApplyRowStyle();
-        header.style.backgroundColor = new Color(0.25f, 0.25f, 0.25f);
-        header.style.paddingLeft = 10;
-        header.style.paddingRight = 10;
-        header.style.paddingTop = 8;
-        header.style.paddingBottom = 8;
+        header.style.backgroundColor = new Color(0.2f, 0.2f, 0.2f);
 
-        Label label = new Label("Source Database:")
-            { style = { unityFontStyleAndWeight = FontStyle.Bold, marginRight = 10 } };
-        header.Add(label);
+        header.Add(new Label("Database:")
+            { style = { unityFontStyleAndWeight = FontStyle.Bold, marginRight = 10, alignSelf = Align.Center } });
 
-        databaseField = new ObjectField() { objectType = typeof(QuestDatabaseSO), style = { width = 300 } };
+        databaseField = new ObjectField() { objectType = typeof(QuestDatabaseSO), style = { width = 250 } };
+        databaseField.value = questDatabase;
         databaseField.RegisterValueChangedCallback(evt =>
         {
             questDatabase = evt.newValue as QuestDatabaseSO;
             RefreshState();
         });
-
-        if (questDatabase == null) questDatabase = FindAssetByType<QuestDatabaseSO>();
-        if (questDatabase != null) databaseField.value = questDatabase;
-
         header.Add(databaseField);
+
         header.Add(new VisualElement() { style = { flexGrow = 1 } });
         header.Add(new Button(RefreshState) { text = "Refresh UI", style = { height = 20 } });
         rootVisualElement.Add(header);
@@ -78,29 +72,22 @@ public class QuestEditor : EditorWindow
 
     private void RefreshState()
     {
+        if (warningContainer == null || contentContainer == null) return;
         warningContainer.Clear();
         contentContainer.Clear();
 
+        if (questDatabase == null) questDatabase = FindAssetByType<QuestDatabaseSO>();
         if (questDatabase == null)
         {
-            questDatabase = FindAssetByType<QuestDatabaseSO>();
-            if (questDatabase != null)
-            {
-                databaseField.value = questDatabase;
-                RefreshState();
-                return;
-            }
-
-            warningContainer.Add(new HelpBox("QuestDatabaseSO not found.", HelpBoxMessageType.Warning));
+            warningContainer.Add(new HelpBox("QuestDatabaseSO를 찾을 수 없습니다.", HelpBoxMessageType.Warning));
             return;
         }
 
         SyncAllStepData();
-
         serializedDatabase = new SerializedObject(questDatabase);
         InitReorderableList();
 
-        sceneManager = FindFirstObjectByType<QuestSceneManager>();
+        sceneManager = Object.FindFirstObjectByType<QuestSceneManager>();
         if (sceneManager == null)
         {
             DrawCreateManagerUI();
@@ -110,144 +97,88 @@ public class QuestEditor : EditorWindow
         DrawMainEditor();
     }
 
-    private void SyncAllStepData()
-    {
-        if (questDatabase == null) return;
-
-        for (int i = 0; i < questDatabase.quests.Count; i++)
-        {
-            QuestInfoSO quest = questDatabase.quests[i];
-            if (quest == null) continue;
-
-            // 1. Requirements 동기화
-            if (quest.requirements != null)
-            {
-                foreach (var reqSO in quest.requirements)
-                {
-                    if (reqSO != null)
-                    {
-                        reqSO.SyncQuestData(quest.ID, i);
-                        EditorUtility.SetDirty(reqSO);
-                    }
-                }
-            }
-
-            // 2. Steps 동기화
-            if (quest.steps != null)
-            {
-                foreach (var stepSO in quest.steps)
-                {
-                    if (stepSO != null)
-                    {
-                        stepSO.SyncQuestData(quest.ID, i);
-                        EditorUtility.SetDirty(stepSO);
-                    }
-                }
-            }
-
-            // 3. Rewards 동기화
-            if (quest.rewards != null)
-            {
-                foreach (var rewardSO in quest.rewards)
-                {
-                    if (rewardSO != null)
-                    {
-                        rewardSO.SyncQuestData(quest.ID, i);
-                        EditorUtility.SetDirty(rewardSO);
-                    }
-                }
-            }
-        }
-    }
-
-    private void InitReorderableList()
-    {
-        SerializedProperty questsProp = serializedDatabase.FindProperty("quests");
-        reorderableList = new ReorderableList(serializedDatabase, questsProp, true, true, true, true)
-        {
-            drawHeaderCallback = (Rect rect) => { EditorGUI.LabelField(rect, $"Quest List ({questsProp.arraySize})"); }
-        };
-
-        reorderableList.drawElementCallback = (Rect rect, int index, bool isActive, bool isFocused) =>
-        {
-            if (index >= questDatabase.quests.Count) return;
-            SerializedProperty element = reorderableList.serializedProperty.GetArrayElementAtIndex(index);
-            QuestInfoSO quest = element.objectReferenceValue as QuestInfoSO;
-
-            rect.y += 2;
-            string nameLabel = (quest != null)
-                ? (string.IsNullOrEmpty(quest.displayName) ? quest.name : quest.displayName)
-                : "Null Quest";
-
-            bool isCompleted = false;
-            if (DBPlayerGameData.Instance != null)
-                isCompleted = index <= DBPlayerGameData.Instance.completedQuestNumber;
-
-            GUIStyle labelStyle = new GUIStyle(EditorStyles.label);
-            if (isCompleted) labelStyle.normal.textColor = Color.green;
-            else if (quest == null) labelStyle.normal.textColor = Color.red;
-
-            EditorGUI.LabelField(new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight),
-                $"{index}. {nameLabel}", labelStyle);
-        };
-
-        reorderableList.onSelectCallback = (list) => RefreshRightPane();
-        reorderableList.onReorderCallbackWithDetails = (list, oldIndex, newIndex) =>
-        {
-            serializedDatabase.ApplyModifiedProperties();
-            RefreshRightPane();
-        };
-    }
-
     private void DrawCreateManagerUI()
     {
-        VisualElement box = new VisualElement()
-            { style = { alignItems = Align.Center, justifyContent = Justify.Center, flexGrow = 1, marginTop = 50 } };
-        box.Add(new Label("⚠️ QuestSceneManager missing.")
-            { style = { fontSize = 16, marginBottom = 15, unityFontStyleAndWeight = FontStyle.Bold } });
-
-        Button createBtn = new Button(() =>
+        VisualElement box = new VisualElement() { style = { alignItems = Align.Center, marginTop = 50 } };
+        box.Add(new Label("⚠️ QuestSceneManager가 씬에 없습니다."));
+        box.Add(new Button(() =>
         {
-            GameObject go = new GameObject("QuestSceneManager");
-            go.AddComponent<QuestSceneManager>();
-            Undo.RegisterCreatedObjectUndo(go, "Create QuestSceneManager");
+            new GameObject("QuestSceneManager").AddComponent<QuestSceneManager>();
             RefreshState();
-        }) { text = "Create Manager", style = { height = 40, width = 250, fontSize = 14 } };
-
-        box.Add(createBtn);
+        }) { text = "매니저 생성", style = { width = 200, height = 30, marginTop = 10 } });
         warningContainer.Add(box);
     }
 
     private void DrawMainEditor()
     {
-        splitView = new TwoPaneSplitView(0, 300, TwoPaneSplitViewOrientation.Horizontal);
+        TwoPaneSplitView splitView = new TwoPaneSplitView(0, 250, TwoPaneSplitViewOrientation.Horizontal);
         contentContainer.Add(splitView);
 
-        VisualElement leftPane = new VisualElement() { style = { backgroundColor = new Color(0.22f, 0.22f, 0.22f) } };
-        splitView.Add(leftPane);
-
-        leftListContainer = new IMGUIContainer(() =>
+        IMGUIContainer leftList = new IMGUIContainer(() =>
         {
-            if (reorderableList != null)
-            {
-                serializedDatabase.Update();
-                reorderableList.DoLayoutList();
-                serializedDatabase.ApplyModifiedProperties();
-            }
-        }) { style = { flexGrow = 1 } };
-        leftPane.Add(leftListContainer);
+            if (serializedDatabase == null || serializedDatabase.targetObject == null) return;
+            serializedDatabase.Update();
+            reorderableList?.DoLayoutList();
+            serializedDatabase.ApplyModifiedProperties();
+        });
+        splitView.Add(leftList);
 
-        rightPane = new ScrollView()
+        rightPane = new ScrollView() { style = { paddingLeft = 10, paddingRight = 10, paddingTop = 10 } };
+        splitView.Add(rightPane);
+
+        if (reorderableList != null && reorderableList.index >= 0) RefreshRightPane();
+    }
+
+    private void InitReorderableList()
+    {
+        // 퀘스트 리스트 프로퍼티 가져오기
+        SerializedProperty questsProp = serializedDatabase.FindProperty("quests");
+
+        // ReorderableList 초기화 (드래그 가능, 헤더 표시, 추가/삭제 버튼 활성화)
+        reorderableList = new ReorderableList(serializedDatabase, questsProp, true, true, true, true);
+
+        // 1. 헤더 그리기
+        reorderableList.drawHeaderCallback = (Rect rect) => { EditorGUI.LabelField(rect, "Quest List"); };
+
+        // 2. 리스트 요소 그리기 (인덱스와 표시 이름 출력)
+        reorderableList.drawElementCallback = (Rect rect, int index, bool isActive, bool isFocused) =>
         {
-            style =
+            var element = questsProp.GetArrayElementAtIndex(index);
+            var quest = element.objectReferenceValue as QuestInfoSO;
+            string label = (quest != null) ? $"{index}: {quest.displayName}" : $"Null Quest ({index})";
+
+            // 텍스트가 너무 길어질 수 있으므로 한 줄로 표시
+            EditorGUI.LabelField(rect, label);
+        };
+
+        // 3. 요소 선택 시 오른쪽 상세 창 갱신
+        reorderableList.onSelectCallback = (list) => RefreshRightPane();
+
+        // 4.순서가 변경되었을 때 실행 (데이터 인덱스 재정렬)
+        reorderableList.onReorderCallbackWithDetails = (list, oldIdx, newIdx) =>
+        {
+            // 리스트 순서가 바뀌면 각 StepSO 내부의 questIndex도 바뀌어야 하므로 전체 동기화 실행
+            list.serializedProperty.serializedObject.ApplyModifiedProperties();
+            SyncAllStepData();
+            RefreshRightPane();
+            Repaint();
+        };
+
+        // 5. 아이템이 삭제되었을 때 실행 (미사용 데이터 청소)
+        reorderableList.onRemoveCallback = (list) =>
+        {
+            // 실수 방지를 위한 확인 팝업 (선택 사항)
+            if (EditorUtility.DisplayDialog("퀘스트 삭제", "리스트에서 삭제하시겠습니까? (연결된 SO 파일은 삭제되지 않습니다)", "삭제", "취소"))
             {
-                paddingLeft = 20, paddingRight = 20, paddingTop = 20, paddingBottom = 20,
-                backgroundColor = new Color(0.28f, 0.28f, 0.28f)
+                // 기본 삭제 동작 수행
+                ReorderableList.defaultBehaviours.DoRemoveButton(list);
+                list.serializedProperty.serializedObject.ApplyModifiedProperties();
+                // 삭제 후 남은 퀘스트들의 ID를 기준으로 데이터 정리 및 인덱스 갱신
+                SyncAllStepData();
+                RefreshRightPane();
+                Repaint();
             }
         };
-        splitView.Add(rightPane);
-        rightPane.Add(new Label("Select a Quest to edit.")
-            { style = { opacity = 0.5f, unityTextAlign = TextAnchor.MiddleCenter, marginTop = 50 } });
     }
 
     private void RefreshRightPane()
@@ -256,342 +187,253 @@ public class QuestEditor : EditorWindow
         if (reorderableList == null || reorderableList.index < 0 ||
             reorderableList.index >= questDatabase.quests.Count) return;
 
-        SyncAllStepData();
+        QuestInfoSO selected = questDatabase.quests[reorderableList.index];
+        if (selected == null) return;
 
-        QuestInfoSO selectedQuest = questDatabase.quests[reorderableList.index];
-        if (selectedQuest == null) return;
+        SerializedObject so = new SerializedObject(selected);
 
-        currentQuestSO = new SerializedObject(selectedQuest);
-        DrawQuestDetail(selectedQuest);
+        VisualElement genBox = new VisualElement();
+        genBox.style.ApplyBoxStyle(new Color(0.25f, 0.25f, 0.25f));
+        genBox.Add(new Label("퀘스트 정보") { style = { unityFontStyleAndWeight = FontStyle.Bold, marginBottom = 5 } });
+        genBox.Add(new PropertyField(so.FindProperty("displayName")));
+        genBox.Add(new PropertyField(so.FindProperty("autoStart")));
+        genBox.Add(new PropertyField(so.FindProperty("autoComplete")));
+        genBox.Bind(so);
+        rightPane.Add(genBox);
+
+        DrawScriptableObjectList(rightPane, so.FindProperty("requirements"), "Requirements",
+            typeof(QuestRequirementDataSO), "Requirements", selected.ID);
+        DrawScriptableObjectList(rightPane, so.FindProperty("steps"), "Quest Steps", typeof(QuestStepDataSO), "Steps",
+            selected.ID, selected);
+        DrawScriptableObjectList(rightPane, so.FindProperty("rewards"), "Rewards", typeof(QuestRewardDataSO), "Rewards",
+            selected.ID);
     }
 
-    private void DrawQuestDetail(QuestInfoSO selectedQuest)
+    private void DrawScriptableObjectList(VisualElement parent, SerializedProperty listProp, string title,
+        Type baseType, string folder, string questId, QuestInfoSO selectedQuest = null)
     {
-        DrawTitleSection(selectedQuest);
-        DrawQuestConfig();
-
-        VisualElement divider = new VisualElement()
-        {
-            style = { height = 2, backgroundColor = new Color(0.15f, 0.15f, 0.15f), marginTop = 20, marginBottom = 20 }
-        };
-        rightPane.Add(divider);
-
-        if (sceneManager != null) DrawSceneGuideConfig(selectedQuest);
-    }
-
-    private void DrawTitleSection(QuestInfoSO selectedQuest)
-    {
-        VisualElement titleBox = new VisualElement();
-        titleBox.style.ApplyBoxStyle(new Color(0.2f, 0.2f, 0.2f));
-        titleBox.style.borderBottomWidth = 2;
-        titleBox.style.borderBottomColor = new Color(0.5f, 0.5f, 0.5f);
-        titleBox.style.marginBottom = 15;
-
-        int questIndex = questDatabase.quests.IndexOf(selectedQuest);
-        VisualElement row = new VisualElement()
-            { style = { flexDirection = FlexDirection.Row, alignItems = Align.Center } };
-
-        string displayTitle = string.IsNullOrEmpty(selectedQuest.displayName)
-            ? selectedQuest.name
-            : selectedQuest.displayName;
-        row.Add(new Label(displayTitle)
-            { style = { fontSize = 20, unityFontStyleAndWeight = FontStyle.Bold, flexGrow = 1 } });
-
-        if (questIndex != -1 && DBPlayerGameData.Instance != null &&
-            questIndex <= DBPlayerGameData.Instance.completedQuestNumber)
-        {
-            row.Add(new Label("COMPLETED")
-            {
-                style =
-                {
-                    fontSize = 12, color = Color.white, backgroundColor = new Color(0.2f, 0.6f, 0.2f),
-                    paddingTop = 2, paddingBottom = 2, paddingLeft = 6, paddingRight = 6,
-                    borderTopLeftRadius = 4, borderTopRightRadius = 4, borderBottomLeftRadius = 4,
-                    borderBottomRightRadius = 4,
-                    unityFontStyleAndWeight = FontStyle.Bold
-                }
-            });
-        }
-
-        titleBox.Add(row);
-
-        string orderText = questIndex != -1 ? $"Order: {questIndex}" : "Order: Not in DB";
-        titleBox.Add(new Label($"ID: {selectedQuest.ID} | {orderText}")
-            { style = { fontSize = 12, color = Color.gray, marginTop = 2 } });
-        rightPane.Add(titleBox);
-    }
-
-    private void DrawQuestConfig()
-    {
-        if (currentQuestSO == null) return;
-        currentQuestSO.Update();
-
-        rightPane.Add(new Label("Quest Configuration (Data)")
-            { style = { fontSize = 16, unityFontStyleAndWeight = FontStyle.Bold, marginBottom = 10 } });
-
         VisualElement container = new VisualElement();
-        container.style.ApplyBoxStyle(new Color(0.24f, 0.24f, 0.24f));
+        container.style.ApplyBoxStyle(new Color(0.22f, 0.22f, 0.22f));
+        container.Add(new Label(title) { style = { unityFontStyleAndWeight = FontStyle.Bold, marginBottom = 5 } });
 
-        SerializedProperty displayNameProp = currentQuestSO.FindProperty("displayName");
-        if (displayNameProp != null) container.Add(new PropertyField(displayNameProp, "Display Name"));
-
-        SerializedProperty autoStartProp = currentQuestSO.FindProperty("autoStart");
-        SerializedProperty autoCompleteProp = currentQuestSO.FindProperty("autoComplete");
-
-        if (autoStartProp != null) container.Add(new PropertyField(autoStartProp, "Auto Start"));
-        if (autoCompleteProp != null) container.Add(new PropertyField(autoCompleteProp, "Auto Complete"));
-
-        string currentQuestID = currentQuestSO.FindProperty("id").stringValue;
-
-        SerializedProperty reqProp = currentQuestSO.FindProperty("requirements");
-        if (reqProp != null)
-            DrawScriptableObjectList(container, reqProp, "Requirements", typeof(QuestRequirementDataSO), "Requirements",
-                currentQuestID);
-
-        SerializedProperty stepsProp = currentQuestSO.FindProperty("steps");
-        if (stepsProp != null)
-            DrawScriptableObjectList(container, stepsProp, "Quest Steps", typeof(QuestStepDataSO), "Steps",
-                currentQuestID);
-
-        SerializedProperty rewardsProp = currentQuestSO.FindProperty("rewards");
-        if (rewardsProp != null)
-            DrawScriptableObjectList(container, rewardsProp, "Rewards", typeof(QuestRewardDataSO), "Rewards",
-                currentQuestID);
-
-        container.Bind(currentQuestSO);
-
-        // 변경 감지 시 저장
-        container.RegisterCallback<ChangeEvent<string>>(_ => currentQuestSO.ApplyModifiedProperties());
-        container.RegisterCallback<ChangeEvent<int>>(_ => currentQuestSO.ApplyModifiedProperties());
-        container.RegisterCallback<ChangeEvent<float>>(_ => currentQuestSO.ApplyModifiedProperties());
-        container.RegisterCallback<ChangeEvent<bool>>(_ => currentQuestSO.ApplyModifiedProperties());
-        container.RegisterCallback<ChangeEvent<Object>>(_ => currentQuestSO.ApplyModifiedProperties());
-
-        rightPane.Add(container);
-    }
-
-    // [매개변수 추가] string questId 받도록 수정
-    private void DrawScriptableObjectList(VisualElement parent, SerializedProperty listProperty, string title,
-        Type baseType, string subFolderName, string questId)
-    {
-        VisualElement root = new VisualElement();
-        root.style.ApplyBoxStyle(new Color(0.2f, 0.2f, 0.2f));
-        root.Add(new Label(title) { style = { unityFontStyleAndWeight = FontStyle.Bold, marginBottom = 5 } });
-
-        VisualElement itemsContainer = new VisualElement();
-
-        for (int i = 0; i < listProperty.arraySize; i++)
+        for (int i = 0; i < listProp.arraySize; i++)
         {
             int index = i;
-            SerializedProperty elementProp = listProperty.GetArrayElementAtIndex(index);
-            Object dataSO = elementProp.objectReferenceValue;
+            SerializedProperty element = listProp.GetArrayElementAtIndex(i);
+            Object dataSO = element.objectReferenceValue;
+
+            Foldout foldout = new Foldout() { value = false, text = "" };
+            VisualElement header = foldout.Q<VisualElement>(className: "unity-foldout__input");
 
             VisualElement row = new VisualElement();
             row.style.ApplyRowStyle();
+            row.style.flexGrow = 1;
+            row.style.marginLeft = 15;
 
-            // 1. SO 파일 연결 필드
-            ObjectField objectField = new ObjectField()
+            ObjectField objField = new ObjectField()
                 { objectType = baseType, value = dataSO, style = { flexGrow = 1 } };
-            objectField.RegisterValueChangedCallback(evt =>
+            objField.RegisterValueChangedCallback(evt =>
             {
-                listProperty.GetArrayElementAtIndex(index).objectReferenceValue = evt.newValue;
-                listProperty.serializedObject.ApplyModifiedProperties();
+                element.objectReferenceValue = evt.newValue;
+                listProp.serializedObject.ApplyModifiedProperties();
+                SyncAllStepData();
                 RefreshRightPane();
             });
-            row.Add(objectField);
+            row.Add(objField);
 
-            // 2. 삭제 버튼
-            Button removeBtn = new Button(() =>
+            Button delBtn = new Button(() =>
             {
-                listProperty.DeleteArrayElementAtIndex(index);
-                listProperty.serializedObject.ApplyModifiedProperties();
+                listProp.DeleteArrayElementAtIndex(index);
+                listProp.serializedObject.ApplyModifiedProperties();
                 RefreshRightPane();
             });
-            removeBtn.ApplyRemoveButtonStyle();
-            row.Add(removeBtn);
+            delBtn.ApplyRemoveButtonStyle();
+            row.Add(delBtn);
+            header.Add(row);
 
-            itemsContainer.Add(row);
-
-            // 3. [핵심 수정] 인라인 에디터 (SO 내부 값 수정)
             if (dataSO != null)
             {
-                SerializedObject stepSO_Serialized = new SerializedObject(dataSO);
-                stepSO_Serialized.Update();
-
-                Foldout soFoldout = new Foldout() { text = "Edit Value", value = true, style = { marginLeft = 15 } };
-
-                // A. 먼저 'questSpecificDatas' 리스트가 있는지 찾습니다.
-                SerializedProperty specificList = stepSO_Serialized.FindProperty("questSpecificDatas");
-
-                if (specificList != null && specificList.isArray)
-                {
-                    // B. 리스트가 있다면 -> 내 퀘스트 ID와 일치하는 항목을 찾습니다.
-                    bool foundMyEntry = false;
-                    for (int j = 0; j < specificList.arraySize; j++)
-                    {
-                        SerializedProperty entry = specificList.GetArrayElementAtIndex(j);
-                        SerializedProperty idProp = entry.FindPropertyRelative("questId");
-
-                        if (idProp != null && idProp.stringValue == questId)
-                        {
-                            foundMyEntry = true;
-
-                            // 찾은 항목의 내부 변수들(amount, targetLevel 등)을 그립니다.
-                            // 단, questId와 questIndex는 에디터에서 건드리지 못하게 숨깁니다.
-                            SerializedProperty endProp = entry.GetEndProperty();
-                            SerializedProperty childProp = entry.Copy();
-
-                            if (childProp.NextVisible(true))
-                            {
-                                VisualElement valueBox = new VisualElement();
-                                valueBox.style.ApplyBoxStyle(new Color(0.25f, 0.25f, 0.3f));
-                                valueBox.style.marginTop = 5;
-
-                                do
-                                {
-                                    if (SerializedProperty.EqualContents(childProp, endProp)) break;
-                                    if (childProp.name == "questId" || childProp.name == "questIndex") continue;
-
-                                    PropertyField field = new PropertyField(childProp);
-                                    field.Bind(stepSO_Serialized);
-                                    valueBox.Add(field);
-                                } while (childProp.NextVisible(false));
-
-                                soFoldout.Add(valueBox);
-                            }
-
-                            break;
-                        }
-                    }
-
-                    if (!foundMyEntry)
-                    {
-                        soFoldout.Add(new Label($"(Data not synced for ID: {questId}. Please Refresh UI.)")
-                            { style = { color = Color.yellow } });
-                    }
-                }
-                else
-                {
-                    // C. 리스트가 없다면(구버전 SO 등) -> 그냥 모든 변수를 다 그립니다.
-                    SerializedProperty iter = stepSO_Serialized.GetIterator();
-                    iter.NextVisible(true);
-                    while (iter.NextVisible(false))
-                    {
-                        if (iter.name == "m_Script") continue;
-                        PropertyField commonField = new PropertyField(iter.Copy());
-                        commonField.Bind(stepSO_Serialized);
-                        soFoldout.Add(commonField);
-                    }
-                }
-
-                itemsContainer.Add(soFoldout);
-
-                // 값 변경 시 SO 저장
-                // (이벤트 등록 부분은 기존과 동일)
-                soFoldout.RegisterCallback<ChangeEvent<string>>(_ => stepSO_Serialized.ApplyModifiedProperties());
-                soFoldout.RegisterCallback<ChangeEvent<int>>(_ => stepSO_Serialized.ApplyModifiedProperties());
-                soFoldout.RegisterCallback<ChangeEvent<Enum>>(_ => stepSO_Serialized.ApplyModifiedProperties());
-                soFoldout.RegisterCallback<ChangeEvent<float>>(_ => stepSO_Serialized.ApplyModifiedProperties());
-                soFoldout.RegisterCallback<ChangeEvent<bool>>(_ => stepSO_Serialized.ApplyModifiedProperties());
+                VisualElement content = new VisualElement() { style = { marginLeft = 20, marginTop = 5 } };
+                DrawSOFields(content, dataSO, questId);
+                if (selectedQuest != null && baseType == typeof(QuestStepDataSO))
+                    DrawStepUIGuide(content, selectedQuest, index);
+                foldout.Add(content);
             }
+
+            container.Add(foldout);
         }
 
-        root.Add(itemsContainer);
-
-        // 4. 추가 버튼 (기존 코드 유지)
-        Button addBtn = new Button(() =>
-        {
-            GenericMenu menu = new GenericMenu();
-            var types = TypeCache.GetTypesDerivedFrom(baseType).Where(t => !t.IsAbstract && !t.IsInterface)
-                .OrderBy(t => t.Name);
-
-            foreach (var type in types)
-            {
-                menu.AddItem(new GUIContent($"Create New/{type.Name}"), false,
-                    () => CreateAndAddAsset(type, listProperty, subFolderName));
-            }
-
-            menu.AddItem(new GUIContent("Add Empty Slot"), false, () =>
-            {
-                listProperty.arraySize++;
-                listProperty.GetArrayElementAtIndex(listProperty.arraySize - 1).objectReferenceValue = null;
-                listProperty.serializedObject.ApplyModifiedProperties();
-                RefreshRightPane();
-            });
-            menu.ShowAsContext();
-        });
+        Button addBtn = new Button(() => ShowAddMenu(listProp, baseType, folder));
         addBtn.ApplyAddButtonStyle();
-        root.Add(addBtn);
-
-        parent.Add(root);
+        container.Add(addBtn);
+        parent.Add(container);
     }
- 
-    // --------------------------------------------------------------------------
-    // [공용] SO 에셋 생성 및 리스트 추가 (범용화됨)
-    // --------------------------------------------------------------------------
-    private void CreateAndAddAsset(Type type, SerializedProperty listProperty, string subFolderName)
+
+    private void DrawSOFields(VisualElement parent, Object dataSO, string questId)
+    {
+        SerializedObject so = new SerializedObject(dataSO);
+        SerializedProperty specificList = so.FindProperty("questSpecificDatas");
+        if (specificList == null) return;
+
+        bool found = false;
+        for (int j = 0; j < specificList.arraySize; j++)
+        {
+            SerializedProperty entry = specificList.GetArrayElementAtIndex(j);
+            if (entry.FindPropertyRelative("questId").stringValue == questId)
+            {
+                found = true;
+                SerializedProperty iter = entry.Copy();
+                SerializedProperty end = entry.GetEndProperty();
+                if (iter.NextVisible(true))
+                {
+                    do
+                    {
+                        if (SerializedProperty.EqualContents(iter, end)) break;
+                        if (iter.name == "questId" || iter.name == "questIndex") continue;
+                        PropertyField pf = new PropertyField(iter.Copy());
+                        pf.Bind(so);
+                        parent.Add(pf);
+                    } while (iter.NextVisible(false));
+                }
+
+                break;
+            }
+        }
+    }
+
+    private void DrawStepUIGuide(VisualElement parent, QuestInfoSO quest, int stepIdx)
+    {
+        var seq = GetOrCreateSequence(quest);
+        if (stepIdx >= seq.StepSequences.Count) return;
+
+        SerializedObject smSO = new SerializedObject(sceneManager);
+        var targetProp = smSO.FindProperty("questSequences")
+            .GetArrayElementAtIndex(sceneManager.questSequences.IndexOf(seq))
+            .FindPropertyRelative("stepSequences").GetArrayElementAtIndex(stepIdx)
+            .FindPropertyRelative("uiTargets");
+
+        VisualElement uiBox = new VisualElement();
+        uiBox.style.ApplyBoxStyle(new Color(0.18f, 0.18f, 0.2f));
+        PropertyField listField = new PropertyField(targetProp, "핑 찍을 UI 리스트");
+        listField.Bind(smSO);
+        uiBox.Add(listField);
+        parent.Add(uiBox);
+    }
+
+    private void ShowAddMenu(SerializedProperty listProp, Type baseType, string subFolder)
+    {
+        GenericMenu menu = new GenericMenu();
+        var types = TypeCache.GetTypesDerivedFrom(baseType).Where(t => !t.IsAbstract).OrderBy(t => t.Name);
+        foreach (var t in types)
+            menu.AddItem(new GUIContent($"Create New/{t.Name}"), false,
+                () => CreateAndAddAsset(t, listProp, subFolder));
+
+        // [핵심 수정] 빈 슬롯 추가 시 null로 초기화 및 동기화
+        menu.AddItem(new GUIContent("Add Empty Slot"), false, () =>
+        {
+            listProp.arraySize++;
+            listProp.GetArrayElementAtIndex(listProp.arraySize - 1).objectReferenceValue = null; // 이전 원소 복제 방지
+            listProp.serializedObject.ApplyModifiedProperties();
+            SyncAllStepData(); // 추가된 슬롯 상태 반영을 위한 동기화
+            RefreshRightPane();
+        });
+        menu.ShowAsContext();
+    }
+
+    private void CreateAndAddAsset(Type type, SerializedProperty listProp, string subFolder)
     {
         string path = AssetDatabase.GetAssetPath(questDatabase);
-        string parentFolder = System.IO.Path.GetDirectoryName(path);
+        string dir = System.IO.Path.GetDirectoryName(path) + "/" + subFolder;
+        if (!System.IO.Directory.Exists(dir)) System.IO.Directory.CreateDirectory(dir);
 
-        string targetFolder = $"{parentFolder}/{subFolderName}";
-        if (!AssetDatabase.IsValidFolder(targetFolder))
-        {
-            AssetDatabase.CreateFolder(parentFolder, subFolderName);
-        }
-
-        string fileName = $"{type.Name}_{Guid.NewGuid().ToString().Substring(0, 4)}.asset";
-        string fullPath = AssetDatabase.GenerateUniqueAssetPath($"{targetFolder}/{fileName}");
-
+        string fullPath =
+            AssetDatabase.GenerateUniqueAssetPath(
+                $"{dir}/{type.Name}_{Guid.NewGuid().ToString().Substring(0, 4)}.asset");
         ScriptableObject asset = ScriptableObject.CreateInstance(type);
         AssetDatabase.CreateAsset(asset, fullPath);
         AssetDatabase.SaveAssets();
 
-        listProperty.arraySize++;
-        listProperty.GetArrayElementAtIndex(listProperty.arraySize - 1).objectReferenceValue = asset;
-        listProperty.serializedObject.ApplyModifiedProperties();
+        listProp.arraySize++;
+        listProp.GetArrayElementAtIndex(listProp.arraySize - 1).objectReferenceValue = asset;
+        listProp.serializedObject.ApplyModifiedProperties();
+
+        // 생성 후 즉시 동기화하여 내부 데이터 필드가 바로 보이게 함
+        SyncAllStepData();
         RefreshRightPane();
-        EditorGUIUtility.PingObject(asset);
-    }
-
-    private void DrawSceneGuideConfig(QuestInfoSO selectedQuest)
-    {
-        rightPane.Add(new Label("UI Guide Sequence (Scene)")
-            { style = { fontSize = 16, unityFontStyleAndWeight = FontStyle.Bold, marginBottom = 10 } });
-
-        if (sceneManager == null) return;
-        var sequenceData = GetOrCreateSequence(selectedQuest);
-        SerializedObject serializedManager = new SerializedObject(sceneManager);
-        serializedManager.Update();
-        SerializedProperty listProp = serializedManager.FindProperty("questSequences");
-        int index = sceneManager.questSequences.IndexOf(sequenceData);
-
-        if (index >= 0)
-        {
-            SerializedProperty stepSeqsProp =
-                listProp.GetArrayElementAtIndex(index).FindPropertyRelative("stepSequences");
-            VisualElement listContainer = new VisualElement();
-            listContainer.style.ApplyBoxStyle(new Color(0.24f, 0.24f, 0.24f));
-            PropertyField simpleListField = new PropertyField(stepSeqsProp, "Step Guide List");
-            simpleListField.Bind(serializedManager);
-            listContainer.Add(simpleListField);
-            rightPane.Add(listContainer);
-        }
     }
 
     private QuestSceneManager.QuestSequence GetOrCreateSequence(QuestInfoSO quest)
     {
-        foreach (var seq in sceneManager.questSequences)
-            if (seq.quest == quest)
-                return seq;
-        var newSeq = new QuestSceneManager.QuestSequence()
-            { quest = quest, stepSequences = new List<QuestSceneManager.StepGuideSequence>() };
-        sceneManager.questSequences.Add(newSeq);
-        EditorUtility.SetDirty(sceneManager);
-        return newSeq;
+        var seq = sceneManager.questSequences.FirstOrDefault(s => s.Quest == quest);
+        if (seq == null)
+        {
+            seq = new QuestSceneManager.QuestSequence();
+            seq.Init(quest);
+            sceneManager.questSequences.Add(seq);
+            EditorUtility.SetDirty(sceneManager);
+        }
+
+        while (seq.StepSequences.Count < quest.steps.Count)
+            seq.StepSequences.Add(new QuestSceneManager.StepGuideSequence());
+        return seq;
     }
 
-    private T FindAssetByType<T>() where T : Object
+    private void SyncAllStepData()
+    {
+        if (questDatabase == null) return;
+
+        HashSet<string> validQuestIds = new HashSet<string>(
+            questDatabase.quests.Where(q => q != null).Select(q => q.ID)
+        );
+
+        for (int i = 0; i < questDatabase.quests.Count; i++)
+        {
+            var q = questDatabase.quests[i];
+            if (q == null) continue;
+
+            q.requirements.ForEach(r =>
+            {
+                if (r) r.SyncQuestData(q.ID, i);
+            });
+            q.steps.ForEach(s =>
+            {
+                if (s) s.SyncQuestData(q.ID, i);
+            });
+            q.rewards.ForEach(rw =>
+            {
+                if (rw) rw.SyncQuestData(q.ID, i);
+            });
+        }
+
+        CleanUpAllQuestAssets(validQuestIds);
+
+        AssetDatabase.SaveAssets();
+    }
+
+    private void CleanUpAllQuestAssets(HashSet<string> validQuestIds)
+    {
+        // Step, Requirement, Reward 에셋들을 모두 검색
+        string[] filter = { "t:QuestStepDataSO", "t:QuestRequirementDataSO", "t:QuestRewardDataSO" };
+        var guids = AssetDatabase.FindAssets(string.Join(" ", filter));
+
+        foreach (var guid in guids)
+        {
+            var path = AssetDatabase.GUIDToAssetPath(guid);
+            var asset = AssetDatabase.LoadAssetAtPath<ScriptableObject>(path);
+
+            if (asset == null) continue;
+
+            // CleanUpUnusedData 메서드가 있는지 확인 후 실행 (Reflection 사용)
+            var method = asset.GetType().GetMethod("CleanUpUnusedData");
+            if (method != null)
+            {
+                method.Invoke(asset, new object[] { validQuestIds });
+                EditorUtility.SetDirty(asset);
+            }
+        }
+    }
+
+    private static T FindAssetByType<T>() where T : Object
     {
         string[] guids = AssetDatabase.FindAssets($"t:{typeof(T)}");
         return guids.Length > 0 ? AssetDatabase.LoadAssetAtPath<T>(AssetDatabase.GUIDToAssetPath(guids[0])) : null;

@@ -22,5 +22,4 @@ MonoBehaviour:
   steps:
   - {fileID: 11400000, guid: 391b4164bc8ab49b0ba92df98b5a4c86, type: 2}
   - {fileID: 11400000, guid: 73269fea6c9e4485389ac44aa4117f2a, type: 2}
-  rewards:
-  - {fileID: 11400000, guid: 07d726b58e4124bb9938faaa03ed2df7, type: 2}
+  rewards: []

@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: QuestDatabase
   m_EditorClassIdentifier: Assembly-CSharp::QuestDatabaseSO
   quests:
+  - {fileID: 11400000, guid: a87315ab2c4a54cf291987a151c23cb8, type: 2}
   - {fileID: 11400000, guid: c9f64cd1b0bf446cda8fa395a9bafe6c, type: 2}
   - {fileID: 11400000, guid: fb4d69872b9d84df5bcb122c07c4af62, type: 2}
-  - {fileID: 11400000, guid: a87315ab2c4a54cf291987a151c23cb8, type: 2}

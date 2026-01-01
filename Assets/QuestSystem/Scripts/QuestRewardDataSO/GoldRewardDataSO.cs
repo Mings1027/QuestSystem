@@ -22,7 +22,6 @@ public class GoldRewardDataSO : QuestRewardDataSO
         }
     }
 
-    // [핵심] 리스트 변수명을 위와 똑같이 'questSpecificDatas'로 통일
     public List<GoldRewardInfo> questSpecificDatas = new();
 
     public override Type GetRewardType() => typeof(GoldReward);

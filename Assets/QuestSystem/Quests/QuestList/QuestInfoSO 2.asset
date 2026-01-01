@@ -19,6 +19,7 @@ MonoBehaviour:
   requirements:
   - {fileID: 11400000, guid: c45a09521f2aa4f269f7a0e0b23048c8, type: 2}
   steps:
+  - {fileID: 11400000, guid: 77b848388aa19423a8d2735fcf41f86f, type: 2}
   - {fileID: 11400000, guid: 391b4164bc8ab49b0ba92df98b5a4c86, type: 2}
   rewards:
   - {fileID: 11400000, guid: 07d726b58e4124bb9938faaa03ed2df7, type: 2}

@@ -12,11 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 92db6caa4b934645adfe8fa1a977af10, type: 3}
   m_Name: Step_KillMonsterStepDataSO_b75a
   m_EditorClassIdentifier: Assembly-CSharp::KillMonsterStepDataSO
-  monsterID: Slime
   questSpecificDatas:
-  - questId: QuestInfoSO 2
-    questIndex: 1
-    killCount: 1
   - questId: QuestInfoSO
-    questIndex: 2
+    questIndex: 0
+    monsterID: Goblin
+    killCount: 10
+  - questId: QuestInfoSO 3
+    questIndex: 1
+    monsterID: 
     killCount: 1
+  - questId: QuestInfoSO 2
+    questIndex: 2
+    monsterID: Slime
+    killCount: 5

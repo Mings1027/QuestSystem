@@ -12,11 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 272b808606cd4c2f913299a04a0d9dbf, type: 3}
   m_Name: Step_ReachStatStepDataSO_52f3
   m_EditorClassIdentifier: Assembly-CSharp::ReachStatStepDataSO
-  targetStat: 0
   questSpecificDatas:
-  - questId: QuestInfoSO 3
-    questIndex: 0
-    targetValue: 10
   - questId: QuestInfoSO
-    questIndex: 2
+    questIndex: 0
+    targetStat: 0
+    targetValue: 15
+  - questId: QuestInfoSO 3
+    questIndex: 1
+    targetStat: 0
     targetValue: 10
