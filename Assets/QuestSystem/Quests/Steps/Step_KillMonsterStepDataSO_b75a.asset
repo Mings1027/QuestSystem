@@ -13,15 +13,11 @@ MonoBehaviour:
   m_Name: Step_KillMonsterStepDataSO_b75a
   m_EditorClassIdentifier: Assembly-CSharp::KillMonsterStepDataSO
   questSpecificDatas:
-  - questId: QuestInfoSO
+  - questId: QuestInfoSO 3
     questIndex: 0
     monsterID: Goblin
-    killCount: 10
-  - questId: QuestInfoSO 3
-    questIndex: 1
-    monsterID: 
-    killCount: 1
-  - questId: QuestInfoSO 2
-    questIndex: 2
-    monsterID: Slime
     killCount: 5
+  - questId: QuestInfoSO
+    questIndex: 1
+    monsterID: Goblin
+    killCount: 10

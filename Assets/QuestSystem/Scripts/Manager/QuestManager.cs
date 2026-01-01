@@ -111,7 +111,7 @@ public class QuestManager : Singleton<QuestManager>
             }
             else
             {
-                Debug.Log($"[QuestManager] 조건 부족으로 시작 불가: {nextQuestInfo.displayName}");
+                Debug.Log($"[QuestManager] 조건 부족으로 시작 불가: {nextQuestInfo.DisplayName}");
             }
         }
     }
@@ -271,7 +271,7 @@ public class QuestManager : Singleton<QuestManager>
                     if (CheckRequirementsMet(quest))
                     {
                         QuestEventManager.Instance.questEvents.StartQuest(quest.info.ID);
-                        Debug.Log($"[AutoStart] 순서 {myIndex}번 '{quest.info.displayName}' 자동 시작됨.");
+                        Debug.Log($"[AutoStart] 순서 {myIndex}번 '{quest.info.DisplayName}' 자동 시작됨.");
                     }
                 }
                 else

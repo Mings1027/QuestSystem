@@ -8,4 +8,6 @@ public abstract class QuestStepDataSO : ScriptableObject
 
     // 에디터에서 "이 퀘스트(ID)가 몇 번째(Index)에서 쓰고 있는지"라고 알려주는 함수
     public abstract void SyncQuestData(string questId, int questIndex);
+    
+    public abstract void CleanUpUnusedData(System.Collections.Generic.HashSet<string> validQuestIds);
 }

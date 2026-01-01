@@ -159,7 +159,9 @@ public class QuestSceneManager : Singleton<QuestSceneManager>
 
         if (stepData is ICounterStepData counterData)
         {
-            // 퀘스트 데이터(SO)의 정보를 버튼에 동적으로 주입
+            if (counterData.GetCategory() != QuestCategory.Action) 
+                return;
+
             var trigger = target.GetComponent<QuestButtonTrigger>() 
                           ?? target.gameObject.AddComponent<QuestButtonTrigger>();
             

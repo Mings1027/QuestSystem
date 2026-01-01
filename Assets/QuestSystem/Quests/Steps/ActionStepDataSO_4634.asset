@@ -15,5 +15,5 @@ MonoBehaviour:
   questSpecificDatas:
   - questId: QuestInfoSO 2
     questIndex: 2
-    actionId: 
+    actionId: ChapterBossButton
     requiredCount: 1

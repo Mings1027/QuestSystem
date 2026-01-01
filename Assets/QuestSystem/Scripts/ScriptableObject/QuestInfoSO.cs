@@ -9,7 +9,12 @@ public class QuestInfoSO : ScriptableObject
     public string ID => id;
 
     [Header("General")]
-    public string displayName;
+    [SerializeField] private string displayName;
+    public string DisplayName
+    {
+        get => displayName;
+        set=> displayName = value;
+    }
 
     [Tooltip("체크 시 조건(Requirements)이 충족되는 즉시 퀘스트가 시작됩니다.")]
     public bool autoStart;

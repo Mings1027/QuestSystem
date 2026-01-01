@@ -17,9 +17,6 @@ MonoBehaviour:
   - questId: QuestInfoSO 3
     questIndex: 0
     goldAmount: 500
-  - questId: QuestInfoSO
-    questIndex: 1
-    goldAmount: 100
   - questId: QuestInfoSO 2
     questIndex: 2
     goldAmount: 300

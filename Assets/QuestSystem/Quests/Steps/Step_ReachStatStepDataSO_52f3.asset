@@ -13,11 +13,15 @@ MonoBehaviour:
   m_Name: Step_ReachStatStepDataSO_52f3
   m_EditorClassIdentifier: Assembly-CSharp::ReachStatStepDataSO
   questSpecificDatas:
-  - questId: QuestInfoSO
+  - questId: QuestInfoSO 3
     questIndex: 0
     targetStat: 0
-    targetValue: 15
-  - questId: QuestInfoSO 3
+    targetValue: 10
+  - questId: QuestInfoSO
     questIndex: 1
     targetStat: 0
     targetValue: 10
+  - questId: New Quest_0a1284f
+    questIndex: 3
+    targetStat: 0
+    targetValue: 20

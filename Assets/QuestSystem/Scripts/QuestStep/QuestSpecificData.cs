@@ -34,3 +34,15 @@ public class ActionStepInfo : QuestSpecificData
     public string actionId; // 버튼 스크립트의 actionId와 일치해야 함
     public int requiredCount = 1;
 }
+
+[Serializable]
+public class LevelReqInfo : QuestSpecificData
+{
+    [Tooltip("목표 레벨")] public int targetLevel = 1;
+}
+
+[Serializable]
+public class GoldRewardInfo : QuestSpecificData
+{
+    [Tooltip("지급할 골드 양")] public int goldAmount = 100;
+}

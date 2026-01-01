@@ -14,12 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CastleLevelRequirementDataSO
   label: "\uC694\uC0C8\uB808\uBCA8"
   questSpecificDatas:
-  - questId: QuestInfoSO 2
+  - questId: QuestInfoSO 3
     questIndex: 0
-    targetLevel: 3
+    targetLevel: 1
   - questId: QuestInfoSO
     questIndex: 1
-    targetLevel: 5
-  - questId: QuestInfoSO 3
+    targetLevel: 3
+  - questId: QuestInfoSO 2
     questIndex: 2
-    targetLevel: 1
+    targetLevel: 5
