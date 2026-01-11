@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -10,8 +12,7 @@ public class QuestSceneManager : Singleton<QuestSceneManager>
         [Tooltip("에디터 식별용 메모 (예: 인벤 열기 -> 장착)")]
         public string description;
 
-        [SerializeField] private List<RectTransform> uiTargets; // 순서대로 눌러야 할 버튼들
-        public List<RectTransform> UiTargets => uiTargets;
+        [SerializeReference] public List<GuideAction> actions = new List<GuideAction>();
     }
 
     [System.Serializable]
@@ -41,8 +42,7 @@ public class QuestSceneManager : Singleton<QuestSceneManager>
     private Dictionary<string, List<StepGuideSequence>> sequenceMap;
 
     private RectTransform currentPing;
-    private List<RectTransform> currentUiPath; 
-    private int currentUiIndex = 0; 
+    private CancellationTokenSource _guideCts;
 
     public void Init()
     {
@@ -85,13 +85,13 @@ public class QuestSceneManager : Singleton<QuestSceneManager>
             case QuestState.CanStart:
             case QuestState.CanFinish:
                 // 시작/보상 수령 가능 시 가이드 버튼에 핑 표시
-                StopStepGuide();
+                StopGuide();
                 ShowPing(guideButton.MyRect);
                 break;
 
             case QuestState.InProgress:
                 // 진행 중일 때 구체적인 UI 가이드 시작
-                StartStepGuide(currentQuest);
+                StartStepGuide(currentQuest).Forget();
                 break;
 
             default:
@@ -100,101 +100,70 @@ public class QuestSceneManager : Singleton<QuestSceneManager>
         }
     }
 
-    private void StartStepGuide(Quest quest)
+    private async UniTaskVoid StartStepGuide(Quest quest)
     {
         string questId = quest.info.ID;
         int stepIndex = quest.GetQuestData().questStepIndex;
 
+        // 데이터 검증
         if (!sequenceMap.TryGetValue(questId, out var allSteps) || stepIndex >= allSteps.Count)
         {
             StopGuide();
             return;
         }
 
-        List<RectTransform> targetList = allSteps[stepIndex].UiTargets;
+        List<GuideAction> targetActions = allSteps[stepIndex].actions;
 
-        // 이미 동일한 경로를 안내 중인지 확인
-        if (currentUiPath == targetList)
+        // 기존 가이드 취소 및 리소스 정리
+        CancelCurrentGuide();
+
+        // 새 토큰 생성
+        _guideCts = new CancellationTokenSource();
+        var token = _guideCts.Token;
+
+        try
         {
-            if (currentUiIndex < currentUiPath.Count) ActivateNextUiTarget(quest);
-            return;
+            // [정말 심플해진 실행 루프]
+            foreach (var action in targetActions)
+            {
+                // 토큰이 취소되었는지 체크 (중간에 퀘스트 완료하거나 창 닫았을 때)
+                if (token.IsCancellationRequested) break;
+
+                // 액션 실행 및 대기 (클릭할 때까지, 혹은 시간이 지날 때까지 여기서 멈춰있음)
+                await action.Execute(token);
+            }
         }
-
-        currentUiPath = targetList;
-        currentUiIndex = 0;
-        ActivateNextUiTarget(quest);
-    }
-
-    private void ActivateNextUiTarget(Quest quest)
-    {
-        HidePing();
-
-        if (currentUiPath == null || currentUiIndex >= currentUiPath.Count) return;
-
-        RectTransform target = currentUiPath[currentUiIndex];
-
-        if (target == null || !target.gameObject.activeInHierarchy) return;
-
-        ShowPing(target);
-
-        // [자동 주입] 리스트의 마지막 원소라면 트리거 주입
-        if (currentUiIndex == currentUiPath.Count - 1)
+        catch (System.OperationCanceledException)
         {
-            InjectTrigger(target, quest);
+            // 가이드가 취소됨 (정상적인 흐름)
         }
-
-        // 핑 찍힌 버튼 클릭 시 다음 단계 가이드 유도
-        Button btn = target.GetComponent<Button>();
-        if (btn != null)
+        catch (System.Exception e)
         {
-            btn.onClick.RemoveListener(OnUiClicked);
-            btn.onClick.AddListener(OnUiClicked);
+            Debug.LogError($"Guide Error: {e.Message}");
+        }
+        finally
+        {
+            // 모든 액션이 끝났거나 취소되었을 때 핑 제거
+            HidePing();
         }
     }
-
-    private void InjectTrigger(RectTransform target, Quest quest)
-    {
-        int stepIdx = quest.GetQuestData().questStepIndex;
-        var stepData = quest.info.steps[stepIdx];
-
-        if (stepData is ICounterStepData counterData)
-        {
-            if (counterData.GetCategory() != QuestCategory.Action) 
-                return;
-
-            var trigger = target.GetComponent<QuestButtonTrigger>() 
-                          ?? target.gameObject.AddComponent<QuestButtonTrigger>();
-            
-            trigger.Setup(counterData.GetCategory(), counterData.GetTargetId(quest.info.ID));
-        }
-    }
-
-    private void OnUiClicked()
-    {
-        if (currentUiPath != null && currentUiIndex < currentUiPath.Count)
-        {
-            RectTransform target = currentUiPath[currentUiIndex];
-            if (target != null) target.GetComponent<Button>()?.onClick.RemoveListener(OnUiClicked);
-        }
-
-        currentUiIndex++;
-        
-        // 다음 UI 가이드로 넘어가거나 상태 갱신
-        RefreshGuideState(); 
-    }
-
+  
     public void StopGuide()
     {
-        StopStepGuide();
+        CancelCurrentGuide();
         HidePing();
     }
 
-    private void StopStepGuide()
+    private void CancelCurrentGuide()
     {
-        currentUiPath = null;
-        currentUiIndex = 0;
+        if (_guideCts != null)
+        {
+            _guideCts.Cancel();
+            _guideCts.Dispose();
+            _guideCts = null;
+        }
     }
-
+    
     public void ShowPing(RectTransform target)
     {
         if (pingPrefab == null || target == null) return;

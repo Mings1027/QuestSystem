@@ -1,8 +1,9 @@
 using System.Collections.Generic;
+using UnityEngine;
 
 public abstract class QuestStepDataSO<T> : QuestStepDataSO where T : QuestSpecificData, new()
 {
-    public List<T> questSpecificDatas = new();
+    [SerializeField] private List<T> questSpecificDatas = new();
 
     public override void SyncQuestData(string questId, int questIndex)
     {

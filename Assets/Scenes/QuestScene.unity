@@ -2707,35 +2707,47 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::QuestSceneManager
   useDontDestroyOnLoad: 0
   questSequences:
-  - quest: {fileID: 11400000, guid: a87315ab2c4a54cf291987a151c23cb8, type: 2}
-    stepSequences:
-    - description: 
-      uiTargets: []
-    - description: "\uACF5\uACA9\uB825 10\uCC0D\uAE30"
-      uiTargets:
-      - {fileID: 1045373343}
-      - {fileID: 2067319915}
-      - {fileID: 1259413177}
   - quest: {fileID: 11400000, guid: c9f64cd1b0bf446cda8fa395a9bafe6c, type: 2}
     stepSequences:
     - description: 
-      uiTargets:
-      - {fileID: 1045373343}
-      - {fileID: 2067319915}
-      - {fileID: 1259413177}
+      actions:
+      - rid: 4534802924187156705
+      - rid: 4534802924187156706
+      - rid: 4534802924187156707
     - description: 
-      uiTargets: []
+      actions: []
   - quest: {fileID: 11400000, guid: fb4d69872b9d84df5bcb122c07c4af62, type: 2}
     stepSequences:
     - description: 
-      uiTargets:
-      - {fileID: 160671792}
-  - quest: {fileID: 11400000, guid: 115e43ee9fc9b43be8ba984ea915acb1, type: 2}
+      actions: []
+  - quest: {fileID: 11400000, guid: a87315ab2c4a54cf291987a151c23cb8, type: 2}
     stepSequences:
     - description: 
-      uiTargets: []
+      actions: []
+    - description: 
+      actions: []
   guideButton: {fileID: 1849631457}
   pingPrefab: {fileID: 7861908588058192612, guid: 0e6fb3ac354454dd697b2ac05e93ba4f, type: 3}
+  references:
+    version: 2
+    RefIds:
+    - rid: 4534802924187156705
+      type: {class: GuideAction_Dialogue, ns: , asm: Assembly-CSharp}
+      data:
+        text: 
+        duration: 2
+    - rid: 4534802924187156706
+      type: {class: GuideAction_Event, ns: , asm: Assembly-CSharp}
+      data:
+        onExecute:
+          m_PersistentCalls:
+            m_Calls: []
+    - rid: 4534802924187156707
+      type: {class: GuideAction_Ping, ns: , asm: Assembly-CSharp}
+      data:
+        description: 
+        targetUI: {fileID: 1045373343}
+        waitForClick: 1
 --- !u!4 &2035159846
 Transform:
   m_ObjectHideFlags: 0
